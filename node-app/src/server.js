@@ -4,7 +4,7 @@ const { settings } = require("./config");
 const { buildDashboardPayload } = require("./repository");
 
 const app = express();
-const staticDir = path.resolve(__dirname, "../../app/static");
+const staticDir = path.resolve(__dirname, "../public");
 const viewsDir = path.resolve(__dirname, "../views");
 
 app.set("view engine", "ejs");
