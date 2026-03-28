@@ -1,0 +1,18 @@
+{
+  "name": "mini-app-node",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node.js variant van de mini dispatcher app voor Combell",
+  "main": "src/server.js",
+  "scripts": {
+    "build": "node -e \"console.log('mini-app-node build klaar')\"",
+    "dev": "node --watch src/server.js",
+    "serve": "node src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "mysql2": "^3.15.2"
+  }
+}

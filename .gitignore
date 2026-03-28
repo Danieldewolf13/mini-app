@@ -1,0 +1,4 @@
+.venv/
+node-app/node_modules/
+__pycache__/
+*.pyc
