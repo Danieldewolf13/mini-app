@@ -1,0 +1,170 @@
+<%
+const roleLabels = {
+  admin: "Admin",
+  dispatcher: "Dispatcher",
+  technician: "Technieker",
+};
+
+const esc = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const builtInCards = builtInUsers
+  .map(
+    (user) => `
+      <article class="built-in-card">
+        <strong>${esc(user.name)}</strong>
+        <span>${esc(user.username)}</span>
+        <span>${roleLabels[user.role] || user.role}</span>
+      </article>
+    `
+  )
+  .join("");
+
+const userRows = users.length
+  ? users
+      .map(
+        (user) => `
+          <tr>
+            <td>
+              <strong>${esc(user.full_name)}</strong>
+              <div class="users-table-meta">${esc(user.username)}</div>
+            </td>
+            <td>${roleLabels[user.role] || user.role}</td>
+            <td>${esc(user.tech_key || "-")}</td>
+            <td>${user.is_active ? "Actief" : "Gepauzeerd"}</td>
+            <td>${esc(user.updated_at ? String(user.updated_at).slice(0, 16).replace("T", " ") : "-")}</td>
+            <td>
+              <div class="users-actions">
+                <form method="post" action="/dispatcher/users/${encodeURIComponent(user.username)}/reset">
+                  <input type="password" name="password" required minlength="8" placeholder="Nieuw wachtwoord">
+                  <button type="submit" class="inline-button">Reset</button>
+                </form>
+                <form method="post" action="/dispatcher/users/${encodeURIComponent(user.username)}/toggle">
+                  <button type="submit" class="inline-button is-secondary">${user.is_active ? "Pauzeer" : "Activeer"}</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        `
+      )
+      .join("")
+  : `<tr><td colspan="6"><p class="empty-state">Nog geen extra gebruikers aangemaakt.</p></td></tr>`;
+
+const technicianOptions = technicians
+  .map(
+    (technician) =>
+      `<option value="${esc(technician.tech_key)}" ${formValues.tech_key === technician.tech_key ? "selected" : ""}>${esc(technician.name)} · ${esc(technician.tech_key)}</option>`
+  )
+  .join("");
+
+const body = `
+  <div class="users-page">
+    <section class="panel users-intro-panel">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Admin</p>
+          <h2>Gebruikersbeheer</h2>
+        </div>
+      </div>
+      <p class="placeholder-copy">Maak logins aan, reset wachtwoorden en zet accounts actief of tijdelijk uit. Publieke registratiecodes zijn nu alleen nog een fallback.</p>
+    </section>
+
+    ${
+      success
+        ? `<section class="alert-banner alert-banner--success"><strong>Gelukt</strong><p>${success}</p></section>`
+        : ""
+    }
+    ${
+      formError
+        ? `<section class="alert-banner"><strong>Actie mislukt</strong><p>${formError}</p></section>`
+        : ""
+    }
+
+    <div class="users-grid">
+      <section class="panel users-create-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Nieuw account</p>
+            <h2>Login aanmaken</h2>
+          </div>
+        </div>
+        <form class="users-form" method="post" action="/dispatcher/users/create">
+          <label class="auth-field">
+            <span>Gebruikersnaam</span>
+          <input type="text" name="username" required value="${esc(formValues.username || "")}" placeholder="bv. ivana of yas">
+          </label>
+          <label class="auth-field">
+            <span>Volledige naam</span>
+          <input type="text" name="full_name" value="${esc(formValues.full_name || "")}" placeholder="Voor admin of dispatcher">
+          </label>
+          <label class="auth-field">
+            <span>Rol</span>
+            <select name="role" required>
+              <option value="dispatcher" ${formValues.role === "dispatcher" ? "selected" : ""}>Dispatcher</option>
+              <option value="technician" ${formValues.role === "technician" ? "selected" : ""}>Technieker</option>
+              <option value="admin" ${formValues.role === "admin" ? "selected" : ""}>Admin</option>
+            </select>
+          </label>
+          <label class="auth-field">
+            <span>Techniekercode</span>
+            <select name="tech_key">
+              <option value="">Kies techniekercode</option>
+              ${technicianOptions}
+            </select>
+          </label>
+          <label class="auth-field">
+            <span>Wachtwoord</span>
+            <input type="password" name="password" required minlength="8" placeholder="Minstens 8 tekens">
+          </label>
+          <button class="auth-submit" type="submit">Account maken</button>
+        </form>
+      </section>
+
+      <section class="panel users-builtins-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Noodlogins</p>
+            <h2>Vaste accounts</h2>
+          </div>
+        </div>
+        <div class="built-in-list">
+          ${builtInCards}
+        </div>
+        <p class="placeholder-copy">Deze env-logins blijven als fallback bestaan. Voor dagelijks beheer gebruik je best de accounts hieronder.</p>
+      </section>
+    </div>
+
+    <section class="panel users-table-panel">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Accounts</p>
+          <h2>Aangemaakte logins</h2>
+        </div>
+        <span class="section-meta">${users.length} accounts</span>
+      </div>
+      <div class="users-table-wrap">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Gebruiker</th>
+              <th>Rol</th>
+              <th>Tech key</th>
+              <th>Status</th>
+              <th>Laatste update</th>
+              <th>Acties</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${userRows}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+`; %>
+<%- include("../layout/base", { ...locals, body }) %>

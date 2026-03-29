@@ -1,9 +1,11 @@
 const express = require("express");
 const path = require("path");
 const { settings } = require("./config");
-const { buildDashboardPayload, buildJobsPayload, buildJobDetailPayload } = require("./repository");
+const { buildDashboardPayload, buildJobsPayload, buildJobDetailPayload, fetchPlanningTechnicians } = require("./repository");
 const { getPlanningData } = require("./services/planningService");
 const {
+  adminCreateUser,
+  adminToggleUserActive,
   authenticateCredentials,
   buildClearCookieHeader,
   buildSetCookieHeader,
@@ -13,6 +15,7 @@ const {
   ensureAuthSchema,
   filterNavigationForUser,
   isRememberRequested,
+  listAuthUsers,
   registerAccount,
   requireAuthApi,
   requireAuthPage,
@@ -33,6 +36,7 @@ const navigation = [
   { href: "/dispatcher/technicians", label: "Technicians", key: "technicians" },
   { href: "/dispatcher/documents", label: "Documents", key: "documents" },
   { href: "/dispatcher/finance", label: "Finance", key: "finance" },
+  { href: "/dispatcher/users", label: "Users", key: "users" },
 ];
 
 app.set("view engine", "ejs");
@@ -353,6 +357,23 @@ function requireNavAccess(key) {
   };
 }
 
+async function loadUsersPageData() {
+  const [users, technicians] = await Promise.all([listAuthUsers(), fetchPlanningTechnicians()]);
+
+  return {
+    users,
+    technicians: technicians.map((technician) => ({
+      id: technician.tg_id,
+      tech_key: technician.tech_key,
+      name: technician.full_name,
+    })),
+    builtInUsers: [
+      { username: settings.adminUser, name: settings.adminName, role: "admin" },
+      { username: settings.dispatcherUser, name: settings.dispatcherName, role: "dispatcher" },
+    ],
+  };
+}
+
 app.get("/", (req, res) => {
   res.redirect(req.authUser ? "/dispatcher/dashboard" : "/login");
 });
@@ -545,6 +566,93 @@ app.get("/dispatcher/finance", requireAuthPage, requireNavAccess("finance"), (re
     "Finance krijgt hier later zijn eigen werkoverzicht.",
     serializeUser(req.authUser)
   );
+});
+
+app.get("/dispatcher/users", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
+  try {
+    const payload = await loadUsersPageData();
+    res.render(
+      "dispatcher/users",
+      baseViewModel({
+        pageTitle: "Users",
+        activeNav: "users",
+        currentUser: serializeUser(req.authUser),
+        success: req.query.success || null,
+        formError: null,
+        formValues: {
+          username: "",
+          full_name: "",
+          role: "dispatcher",
+          tech_key: "",
+        },
+        ...payload,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/dispatcher/users/create", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
+  try {
+    await adminCreateUser({
+      username: req.body.username,
+      password: req.body.password,
+      fullName: req.body.full_name,
+      role: req.body.role,
+      techKey: req.body.tech_key,
+    });
+
+    res.redirect("/dispatcher/users?success=Login aangemaakt");
+  } catch (error) {
+    try {
+      const payload = await loadUsersPageData();
+      res.status(400).render(
+        "dispatcher/users",
+        baseViewModel({
+          pageTitle: "Users",
+          activeNav: "users",
+          currentUser: serializeUser(req.authUser),
+          success: null,
+          formError: error.message || String(error),
+          formValues: {
+            username: String(req.body.username || ""),
+            full_name: String(req.body.full_name || ""),
+            role: String(req.body.role || "dispatcher"),
+            tech_key: String(req.body.tech_key || ""),
+          },
+          ...payload,
+        })
+      );
+    } catch (nestedError) {
+      next(nestedError);
+    }
+  }
+});
+
+app.post("/dispatcher/users/:username/reset", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
+  try {
+    await resetPassword({
+      username: req.params.username,
+      password: req.body.password,
+      actor: req.authUser,
+    });
+    res.redirect("/dispatcher/users?success=Wachtwoord bijgewerkt");
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/dispatcher/users/:username/toggle", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
+  try {
+    await adminToggleUserActive({
+      username: req.params.username,
+      actor: req.authUser,
+    });
+    res.redirect("/dispatcher/users?success=Gebruikersstatus bijgewerkt");
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("/api/dashboard", requireAuthApi, async (req, res) => {

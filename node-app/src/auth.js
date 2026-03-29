@@ -124,6 +124,39 @@ async function updateAuthUserPassword(username, password) {
   );
 }
 
+async function listAuthUsers() {
+  await ensureAuthSchema();
+  return query(`
+    SELECT
+      id,
+      username,
+      role,
+      tg_id,
+      tech_key,
+      full_name,
+      is_active,
+      created_at,
+      updated_at
+    FROM auth_users
+    ORDER BY
+      FIELD(role, 'admin', 'dispatcher', 'technician'),
+      full_name ASC,
+      username ASC
+  `);
+}
+
+async function setAuthUserActive(username, isActive) {
+  await ensureAuthSchema();
+  await query(
+    `
+      UPDATE auth_users
+      SET is_active = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE LOWER(username) = LOWER(?)
+    `,
+    [isActive ? 1 : 0, normalizeUsername(username)]
+  );
+}
+
 function serializeUser(user) {
   return {
     username: user.username,
@@ -221,7 +254,7 @@ function canAccessNav(user, key) {
   }
 
   if (user.role === "dispatcher") {
-    return key !== "finance";
+    return key !== "finance" && key !== "users";
   }
 
   if (user.role === "technician") {
@@ -351,6 +384,49 @@ async function registerAccount({ username, password, fullName, role, techKey, se
   });
 }
 
+async function adminCreateUser({ username, password, fullName, role, techKey }) {
+  const normalizedRole = String(role || "").trim().toLowerCase();
+  const normalizedUsername = normalizeUsername(username);
+  const safePassword = String(password || "");
+  const safeName = String(fullName || "").trim();
+
+  if (!normalizedUsername || safePassword.length < 8) {
+    throw new Error("Gebruik een geldige gebruikersnaam en een wachtwoord van minstens 8 tekens.");
+  }
+
+  if (!["admin", "dispatcher", "technician"].includes(normalizedRole)) {
+    throw new Error("Ongeldige rol.");
+  }
+
+  const existing = await findAuthUserByUsername(normalizedUsername);
+  if (existing) {
+    throw new Error("Deze gebruikersnaam bestaat al.");
+  }
+
+  if (normalizedRole === "technician") {
+    const technician = await fetchUserByTechKey(techKey);
+    if (!technician) {
+      throw new Error("Onbekende techniekercode.");
+    }
+
+    return createAuthUser({
+      username: normalizedUsername,
+      password: safePassword,
+      role: "technician",
+      fullName: technician.full_name,
+      tgId: technician.tg_id,
+      techKey: technician.tech_key,
+    });
+  }
+
+  return createAuthUser({
+    username: normalizedUsername,
+    password: safePassword,
+    role: normalizedRole,
+    fullName: safeName || normalizedUsername,
+  });
+}
+
 async function resetPassword({ username, password, resetCode, actor }) {
   const normalizedUsername = normalizeUsername(username);
   const safePassword = String(password || "");
@@ -373,7 +449,27 @@ async function resetPassword({ username, password, resetCode, actor }) {
   await updateAuthUserPassword(normalizedUsername, safePassword);
 }
 
+async function adminToggleUserActive({ username, actor }) {
+  if (!actor || actor.role !== "admin") {
+    throw new Error("Alleen admin kan gebruikersstatus wijzigen.");
+  }
+
+  const normalizedUsername = normalizeUsername(username);
+  const existing = await findAuthUserByUsername(normalizedUsername);
+  if (!existing) {
+    throw new Error("Gebruiker niet gevonden.");
+  }
+
+  if (normalizedUsername === normalizeUsername(actor.username)) {
+    throw new Error("Je kunt je eigen account niet uitschakelen.");
+  }
+
+  await setAuthUserActive(normalizedUsername, !Boolean(existing.is_active));
+}
+
 module.exports = {
+  adminCreateUser,
+  adminToggleUserActive,
   authenticateCredentials,
   buildClearCookieHeader,
   buildSetCookieHeader,
@@ -383,6 +479,7 @@ module.exports = {
   ensureAuthSchema,
   filterNavigationForUser,
   isRememberRequested,
+  listAuthUsers,
   registerAccount,
   requireAuthApi,
   requireAuthPage,

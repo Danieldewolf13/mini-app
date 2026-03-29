@@ -287,6 +287,10 @@ select {
   color: var(--danger);
 }
 
+.alert-banner--success strong {
+  color: var(--success);
+}
+
 .auth-shell {
   display: grid;
   place-items: center;
@@ -402,7 +406,8 @@ select {
 }
 
 .dashboard-page,
-.jobs-page {
+.jobs-page,
+.users-page {
   display: grid;
   gap: 12px;
 }
@@ -816,6 +821,99 @@ select {
   padding-bottom: 12px;
 }
 
+.users-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.95fr) minmax(300px, 0.7fr);
+  gap: 12px;
+}
+
+.users-form {
+  display: grid;
+  gap: 12px;
+}
+
+.built-in-list {
+  display: grid;
+  gap: 10px;
+}
+
+.built-in-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-soft);
+}
+
+.users-table-wrap {
+  overflow: auto;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-table th,
+.users-table td {
+  padding: 12px 10px;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+  text-align: left;
+}
+
+.users-table thead th {
+  border-top: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.users-table-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.users-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.users-actions form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.users-actions input {
+  min-height: 38px;
+  min-width: 180px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.inline-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.inline-button.is-secondary {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--blue);
+}
+
 .filters {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -952,6 +1050,10 @@ select {
     grid-template-columns: 1fr;
   }
 
+  .users-grid {
+    grid-template-columns: 1fr;
+  }
+
   .dashboard-row-workspace {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
@@ -1009,6 +1111,11 @@ select {
   .dashboard-row-workspace,
   .workspace-zone-side {
     grid-template-columns: 1fr;
+  }
+
+  .users-actions form {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .dashboard-row-workspace {
