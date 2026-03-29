@@ -58,7 +58,9 @@ const userRows = users.length
 const technicianOptions = technicians
   .map(
     (technician) =>
-      `<option value="${esc(technician.tech_key)}" ${formValues.tech_key === technician.tech_key ? "selected" : ""}>${esc(technician.name)} · ${esc(technician.tech_key)}</option>`
+      `<option value="${esc(technician.id)}" ${String(formValues.tech_key) === String(technician.id) ? "selected" : ""}>${esc(technician.name)} · ${esc(
+        technician.tech_key || "-"
+      )} · ${esc(technician.id)}</option>`
   )
   .join("");
 

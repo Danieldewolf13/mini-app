@@ -135,6 +135,7 @@ async function fetchTechnicianSummary() {
       ON c.assigned_to = u.tg_id
      AND c.status NOT IN ('completed', 'cancelled')
     WHERE u.is_active = 1
+      AND u.role = 'technician'
     GROUP BY u.tg_id, u.full_name, u.tech_key, u.role
     ORDER BY u.full_name ASC
   `;
@@ -151,6 +152,7 @@ async function fetchPlanningTechnicians() {
       u.role
     FROM users u
     WHERE u.is_active = 1
+      AND u.role = 'technician'
     ORDER BY u.full_name ASC
   `;
 
@@ -172,6 +174,24 @@ async function fetchUserByTechKey(techKey) {
   `;
 
   const rows = await query(sql, [String(techKey || "").trim()]);
+  return rows[0] || null;
+}
+
+async function fetchUserById(tgId) {
+  const sql = `
+    SELECT
+      u.tg_id,
+      u.full_name,
+      u.tech_key,
+      u.role,
+      u.is_active
+    FROM users u
+    WHERE u.is_active = 1
+      AND u.tg_id = ?
+    LIMIT 1
+  `;
+
+  const rows = await query(sql, [Number(tgId)]);
   return rows[0] || null;
 }
 
@@ -469,6 +489,7 @@ module.exports = {
   buildDashboardPayload,
   buildJobsPayload,
   buildJobDetailPayload,
+  fetchUserById,
   fetchUserByTechKey,
   fetchPlanningJobs,
   fetchPlanningTechnicians,

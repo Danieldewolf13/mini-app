@@ -366,6 +366,7 @@ async function loadUsersPageData() {
       id: technician.tg_id,
       tech_key: technician.tech_key,
       name: technician.full_name,
+      role: technician.role,
     })),
     builtInUsers: [
       { username: settings.adminUser, name: settings.adminName, role: "admin" },

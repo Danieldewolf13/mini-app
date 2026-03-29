@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const { settings } = require("./config");
 const { query } = require("./db");
-const { fetchUserByTechKey } = require("./repository");
+const { fetchUserById, fetchUserByTechKey } = require("./repository");
 
 const COOKIE_NAME = settings.authCookieName;
 const DEFAULT_REMEMBER_SECONDS = 30 * 24 * 60 * 60;
@@ -404,9 +404,9 @@ async function adminCreateUser({ username, password, fullName, role, techKey }) 
   }
 
   if (normalizedRole === "technician") {
-    const technician = await fetchUserByTechKey(techKey);
+    const technician = await fetchUserById(techKey);
     if (!technician) {
-      throw new Error("Onbekende techniekercode.");
+      throw new Error("Onbekende technieker.");
     }
 
     return createAuthUser({

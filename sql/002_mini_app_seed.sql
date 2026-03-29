@@ -10,10 +10,16 @@ ON DUPLICATE KEY UPDATE
 
 INSERT INTO users (tg_id, full_name, tech_key, role, is_active, created_at)
 VALUES
-    (7909226479, 'Daniel', 'DAN', 'dispatcher', 1, NOW() - INTERVAL 10 DAY),
-    (10001, 'Yassine El Amrani', 'YAS', 'technician', 1, NOW() - INTERVAL 8 DAY),
-    (10002, 'Mansour K.', 'MANS', 'technician', 1, NOW() - INTERVAL 8 DAY),
-    (10003, 'Isa M.', 'ISA', 'technician', 1, NOW() - INTERVAL 8 DAY)
+    (457141175, 'Daniel', 'DAN', 'admin', 1, NOW() - INTERVAL 10 DAY),
+    (395799444, 'Mansur', 'MANS', 'technician', 1, NOW() - INTERVAL 8 DAY),
+    (5113984827, 'Isa', 'ISA', 'technician', 1, NOW() - INTERVAL 8 DAY),
+    (7927109026, 'Apti', 'APTI', 'technician', 1, NOW() - INTERVAL 8 DAY),
+    (1994523057, 'Arbi', 'SECURELOCKS', 'technician', 1, NOW() - INTERVAL 8 DAY),
+    (1827992629, 'Ratmir', 'SECURELOCKS', 'technician', 1, NOW() - INTERVAL 8 DAY),
+    (673482032, 'Armadeos', 'SECURELOCKS', 'technician', 1, NOW() - INTERVAL 8 DAY),
+    (2092230520, 'Ras / Rasul', 'RAS', 'technician', 1, NOW() - INTERVAL 8 DAY),
+    (7909226479, 'Ivana', '@ivanabubamaric', 'dispatcher', 1, NOW() - INTERVAL 8 DAY),
+    (5701815025, 'Zaur', 'SAFELOCKS', 'technician', 1, NOW() - INTERVAL 8 DAY)
 ON DUPLICATE KEY UPDATE
     full_name = VALUES(full_name),
     tech_key = VALUES(tech_key),
@@ -39,7 +45,7 @@ VALUES
     (
         101,
         1,
-        10001,
+        7927109026,
         'Slot kapot',
         'Meerpuntsslot draait niet meer',
         'Depannage',
@@ -53,7 +59,7 @@ VALUES
     (
         102,
         2,
-        10002,
+        395799444,
         'Buitengesloten',
         'Sleutels binnen laten liggen',
         'Spoedinterventie',
@@ -67,7 +73,7 @@ VALUES
     (
         103,
         3,
-        10003,
+        5113984827,
         'Inbraakschade',
         'Cilinder en beslag moeten vervangen worden',
         'Beveiliging',
@@ -127,7 +133,7 @@ VALUES
         'F260683',
         185.00,
         'field',
-        7909226479,
+        457141175,
         NOW() - INTERVAL 80 MINUTE
     ),
     (
