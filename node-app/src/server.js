@@ -130,10 +130,10 @@ app.get("/dispatcher/dashboard", async (req, res) => {
     baseViewModel({
       pageTitle: "Dispatcher dashboard",
       activeNav: "dashboard",
+      contentClass: "content--fullwidth dashboard-content",
       actions: [
         { href: settings.billitBaseUrl, label: "Open Billit", variant: "ghost", external: true },
       ],
-      rightPanel: "dispatcher/partials/job_detail_panel",
       ...payload,
     })
   );

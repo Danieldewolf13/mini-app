@@ -1,33 +1,74 @@
 <%
+const sideSummary = `
+  <section class="panel secondary-card">
+    <div class="section-head">
+      <div>
+        <p class="section-kicker">Dispatch focus</p>
+        <h2>Now</h2>
+      </div>
+    </div>
+
+    <div class="focus-list">
+      <div class="focus-row">
+        <strong>${kpis.requires_action}</strong>
+        <span>Needs action now</span>
+      </div>
+      <div class="focus-row">
+        <strong>${kpis.free_tech}</strong>
+        <span>Free technicians</span>
+      </div>
+      <div class="focus-row">
+        <strong>${queue.overdue.length}</strong>
+        <span>Overdue jobs</span>
+      </div>
+      <div class="focus-row">
+        <strong>${appointments.length}</strong>
+        <span>Next appointments</span>
+      </div>
+    </div>
+
+    <div class="summary-actions">
+      <a class="topbar-button" href="/dispatcher/planning">Open planning</a>
+      <a class="topbar-button" href="${billitBaseUrl}" target="_blank" rel="noreferrer">Finance</a>
+    </div>
+  </section>
+`;
+
 const body = `
-<div class="dashboard-page">
+<div class="dashboard-page dashboard-canvas">
   ${include("./partials/dashboard_kpis")}
 
-  <div class="dashboard-grid">
-    <div class="col-left">
+  <div class="dashboard-grid dashboard-main-grid">
+    <div class="queue-card">
       ${include("./partials/action_queue")}
     </div>
 
-    <div class="col-center">
+    <div class="jobs-card">
       ${include("./partials/active_jobs_list")}
     </div>
 
-    <div class="col-right">
+    <div class="side-stack">
       ${include("./partials/technicians_widget")}
       ${include("./partials/appointments_widget")}
     </div>
-  </div>
 
-  <section class="panel map-panel">
-    <div class="section-head">
-      <div>
-        <p class="section-kicker">Overview</p>
-        <h2>Map</h2>
-      </div>
-      <span class="section-meta">Regional overview only</span>
+    <div class="job-detail-card">
+      ${include("./partials/job_detail_panel")}
     </div>
-    ${include("./partials/mini_map")}
-  </section>
+
+    ${sideSummary}
+
+    <section class="panel map-card">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Overview</p>
+          <h2>Mini map</h2>
+        </div>
+        <span class="section-meta">Regional overview only</span>
+      </div>
+      ${include("./partials/mini_map")}
+    </section>
+  </div>
 </div>
 `; %>
 <%- include("../layout/base", { ...locals, body }) %>

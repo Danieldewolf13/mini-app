@@ -14,7 +14,7 @@
   <% }) %>
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell <%= rightPanel ? 'has-right-panel' : 'no-right-panel' %>">
     <aside class="sidebar">
       <%- include("../dispatcher/partials/sidebar") %>
     </aside>
