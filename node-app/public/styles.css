@@ -143,7 +143,7 @@ select {
 .detail-header h2 {
   margin: 0;
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 38px;
+  font-size: 30px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -155,7 +155,7 @@ select {
 }
 
 .topbar-copy--compact h1 {
-  font-size: 28px;
+  font-size: 24px;
 }
 
 .sidebar-toggle {
@@ -262,7 +262,7 @@ select {
 .dashboard-page,
 .jobs-page {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .dashboard-canvas {
@@ -272,7 +272,7 @@ select {
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 .kpi {
@@ -288,7 +288,7 @@ select {
 
 .dashboard-grid {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .col-left,
@@ -308,6 +308,11 @@ select {
   align-items: start;
 }
 
+.dashboard-detail-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: start;
+}
+
 .queue-card {
   grid-column: span 3;
 }
@@ -319,7 +324,7 @@ select {
 .side-stack {
   grid-column: span 4;
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .job-detail-card {
@@ -355,7 +360,7 @@ select {
 
 .focus-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .focus-row {
@@ -446,7 +451,7 @@ select {
 .appointment-list,
 .tech-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .job-card {
@@ -506,7 +511,7 @@ select {
 }
 
 .compact-list {
-  gap: 10px;
+  gap: 8px;
 }
 
 .appointment-card {
@@ -564,11 +569,15 @@ select {
 }
 
 .detail-header {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
+}
+
+.detail-header h2 {
+  font-size: 28px;
 }
 
 .section + .section {
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .detail-stack {
@@ -645,6 +654,10 @@ select {
   .dashboard-main-grid {
     grid-template-columns: repeat(12, minmax(0, 1fr));
   }
+
+  .dashboard-detail-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 1200px) {
@@ -678,6 +691,10 @@ select {
   }
 
   .dashboard-main-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .dashboard-detail-grid {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 
@@ -743,6 +760,7 @@ select {
   }
 
   .dashboard-main-grid,
+  .dashboard-detail-grid,
   .kpis {
     grid-template-columns: 1fr;
   }

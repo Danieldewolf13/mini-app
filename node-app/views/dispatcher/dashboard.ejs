@@ -51,24 +51,26 @@ const body = `
       ${include("./partials/technicians_widget")}
       ${include("./partials/appointments_widget")}
     </div>
+  </div>
 
+  <div class="dashboard-grid dashboard-detail-grid">
     <div class="job-detail-card">
       ${include("./partials/job_detail_panel")}
     </div>
 
     ${sideSummary}
-
-    <section class="panel map-card">
-      <div class="section-head">
-        <div>
-          <p class="section-kicker">Overview</p>
-          <h2>Mini map</h2>
-        </div>
-        <span class="section-meta">Regional overview only</span>
-      </div>
-      ${include("./partials/mini_map")}
-    </section>
   </div>
+
+  <section class="panel map-card">
+    <div class="section-head">
+      <div>
+        <p class="section-kicker">Overview</p>
+        <h2>Mini map</h2>
+      </div>
+      <span class="section-meta">Regional overview only</span>
+    </div>
+    ${include("./partials/mini_map")}
+  </section>
 </div>
 `; %>
 <%- include("../layout/base", { ...locals, body }) %>
