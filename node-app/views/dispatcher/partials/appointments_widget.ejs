@@ -1,14 +1,15 @@
-<section class="panel">
+<section class="panel appointments-panel">
   <div class="section-head">
     <div>
       <p class="section-kicker">Planning</p>
       <h2>Upcoming</h2>
     </div>
+    <a class="section-link" href="/dispatcher/planning">View all</a>
   </div>
 
-  <div class="appointment-list compact-list">
+  <div class="appointment-list compact-list appointments-preview">
     <% if (appointments.length) { %>
-      <% appointments.forEach((appt) => { %>
+      <% appointments.slice(0, 5).forEach((appt) => { %>
         <button class="appointment-card" type="button" data-job-id="<%= appt.id %>">
           <strong><%= appt.scheduled_at_label %></strong>
           <p>#<%= appt.id %> · <%= appt.client_name || "-" %></p>

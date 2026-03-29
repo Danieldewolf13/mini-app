@@ -1,4 +1,4 @@
-<section class="panel queue">
+<section class="panel queue queue-panel">
   <div class="section-head">
     <div>
       <p class="section-kicker">Queue</p>
@@ -6,10 +6,11 @@
     </div>
   </div>
 
+  <div class="queue-preview">
   <div class="queue-block">
     <h3>Unassigned</h3>
     <% if (queue.unassigned.length) { %>
-      <% queue.unassigned.forEach((job) => { %>
+      <% queue.unassigned.slice(0, 4).forEach((job) => { %>
         <button class="job-row" type="button" data-job-id="<%= job.id %>">
           <span class="job-row-main">
             <strong>#<%= job.id %></strong>
@@ -26,7 +27,7 @@
   <div class="queue-block">
     <h3>Overdue</h3>
     <% if (queue.overdue.length) { %>
-      <% queue.overdue.forEach((job) => { %>
+      <% queue.overdue.slice(0, 4).forEach((job) => { %>
         <button class="job-row danger" type="button" data-job-id="<%= job.id %>">
           <span class="job-row-main">
             <strong>#<%= job.id %></strong>
@@ -43,7 +44,7 @@
   <div class="queue-block">
     <h3>Waiting confirmation</h3>
     <% if (queue.waiting_confirmation.length) { %>
-      <% queue.waiting_confirmation.forEach((job) => { %>
+      <% queue.waiting_confirmation.slice(0, 4).forEach((job) => { %>
         <button class="job-row warning" type="button" data-job-id="<%= job.id %>">
           <span class="job-row-main">
             <strong>#<%= job.id %></strong>
@@ -60,7 +61,7 @@
   <div class="queue-block">
     <h3>Missing documents</h3>
     <% if (queue.missing_documents.length) { %>
-      <% queue.missing_documents.forEach((job) => { %>
+      <% queue.missing_documents.slice(0, 4).forEach((job) => { %>
         <button class="job-row info" type="button" data-job-id="<%= job.id %>">
           <span class="job-row-main">
             <strong>#<%= job.id %></strong>
@@ -72,5 +73,6 @@
     <% } else { %>
       <p class="empty-state">Geen jobs met ontbrekende documenten.</p>
     <% } %>
+  </div>
   </div>
 </section>

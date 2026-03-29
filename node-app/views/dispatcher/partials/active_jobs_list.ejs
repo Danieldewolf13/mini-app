@@ -1,4 +1,4 @@
-<section class="panel">
+<section class="panel jobs-panel">
   <div class="section-head">
     <div>
       <p class="section-kicker">Jobs</p>
@@ -9,9 +9,9 @@
 
   <p class="section-meta" data-visible-count>Main operational list for current dispatcher decisions.</p>
 
-  <div class="jobs-list">
+  <div class="jobs-list jobs-preview">
     <% if (jobs.length) { %>
-      <% jobs.slice(0, 12).forEach((job) => { %>
+      <% jobs.slice(0, 8).forEach((job) => { %>
         <%- include("job_card", { job }) %>
       <% }) %>
     <% } else { %>
