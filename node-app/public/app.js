@@ -26,7 +26,7 @@ function filterJobCards() {
   const statusFilter = document.querySelector("#status-filter");
   const technicianFilter = document.querySelector("#technician-filter");
   const dateFilter = document.querySelector("#date-filter");
-  const visibleCount = document.querySelector(".section-meta");
+  const visibleCount = document.querySelector("[data-visible-count]");
   const cards = Array.from(document.querySelectorAll(".job-card"));
 
   if (!cards.length) {
@@ -65,7 +65,7 @@ function filterJobCards() {
   });
 
   if (visibleCount) {
-    visibleCount.textContent = `${visible} zichtbaar`;
+    visibleCount.textContent = `${visible} active jobs visible`;
   }
 }
 
@@ -169,9 +169,9 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const card = event.target.closest(".job-card");
-  if (card && typeof window.loadJobDetail === "function") {
-    window.loadJobDetail(card.dataset.id);
+  const jobTarget = event.target.closest("[data-job-id]");
+  if (jobTarget && typeof window.loadJobDetail === "function") {
+    window.loadJobDetail(jobTarget.dataset.jobId);
   }
 });
 

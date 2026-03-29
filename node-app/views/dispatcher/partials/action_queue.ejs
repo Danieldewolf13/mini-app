@@ -10,10 +10,13 @@
     <h3>Unassigned</h3>
     <% if (queue.unassigned.length) { %>
       <% queue.unassigned.forEach((job) => { %>
-        <div class="job-row">
-          <span>#<%= job.id %></span>
-          <span><%= job.city || "-" %></span>
-        </div>
+        <button class="job-row" type="button" data-job-id="<%= job.id %>">
+          <span class="job-row-main">
+            <strong>#<%= job.id %></strong>
+            <span><%= job.client %></span>
+          </span>
+          <span class="job-row-side"><%= job.city || "-" %></span>
+        </button>
       <% }) %>
     <% } else { %>
       <p class="empty-state">Geen open unassigned jobs.</p>
@@ -24,13 +27,50 @@
     <h3>Overdue</h3>
     <% if (queue.overdue.length) { %>
       <% queue.overdue.forEach((job) => { %>
-        <div class="job-row danger">
-          <span>#<%= job.id %></span>
-          <span><%= job.city || "-" %></span>
-        </div>
+        <button class="job-row danger" type="button" data-job-id="<%= job.id %>">
+          <span class="job-row-main">
+            <strong>#<%= job.id %></strong>
+            <span><%= job.client %></span>
+          </span>
+          <span class="job-row-side"><%= job.city || "-" %></span>
+        </button>
       <% }) %>
     <% } else { %>
       <p class="empty-state">Geen overdue jobs.</p>
+    <% } %>
+  </div>
+
+  <div class="queue-block">
+    <h3>Waiting confirmation</h3>
+    <% if (queue.waiting_confirmation.length) { %>
+      <% queue.waiting_confirmation.forEach((job) => { %>
+        <button class="job-row warning" type="button" data-job-id="<%= job.id %>">
+          <span class="job-row-main">
+            <strong>#<%= job.id %></strong>
+            <span><%= job.client %></span>
+          </span>
+          <span class="job-row-side"><%= job.status %></span>
+        </button>
+      <% }) %>
+    <% } else { %>
+      <p class="empty-state">Geen jobs in afwachting van bevestiging.</p>
+    <% } %>
+  </div>
+
+  <div class="queue-block">
+    <h3>Missing documents</h3>
+    <% if (queue.missing_documents.length) { %>
+      <% queue.missing_documents.forEach((job) => { %>
+        <button class="job-row info" type="button" data-job-id="<%= job.id %>">
+          <span class="job-row-main">
+            <strong>#<%= job.id %></strong>
+            <span><%= job.client %></span>
+          </span>
+          <span class="job-row-side"><%= job.technician %></span>
+        </button>
+      <% }) %>
+    <% } else { %>
+      <p class="empty-state">Geen jobs met ontbrekende documenten.</p>
     <% } %>
   </div>
 </section>

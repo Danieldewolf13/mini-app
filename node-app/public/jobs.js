@@ -24,7 +24,16 @@ async function loadJobDetail(id) {
   `;
 
   document.getElementById("jobDocs").innerHTML = data.documents.length
-    ? data.documents.map((doc) => `<div>${doc.name}</div>`).join("")
+    ? data.documents
+        .map(
+          (doc) => `
+            <div>
+              <strong>${doc.name}</strong>
+              <span>${doc.verified}</span>
+            </div>
+          `
+        )
+        .join("")
     : `<p class="muted">Nog geen documenten gekoppeld.</p>`;
 
   const appointmentHtml = data.next_appointment
@@ -36,8 +45,18 @@ async function loadJobDetail(id) {
     <div><strong>Method</strong><span>${data.finance.method}</span></div>
     <div><strong>Invoice</strong><span>${data.finance.invoice}</span></div>
     <div><strong>Amount</strong><span>${data.finance.amount_excl_vat}</span></div>
+    <div><strong>Receiver</strong><span>${data.finance.receiver}</span></div>
     ${appointmentHtml}
   `;
+
+  const assignBtn = document.getElementById("assignBtn");
+  const statusBtn = document.getElementById("statusBtn");
+  if (assignBtn) {
+    assignBtn.textContent = data.actions?.assign_label || "Assign technician";
+  }
+  if (statusBtn) {
+    statusBtn.textContent = data.actions?.status_label || "Change status";
+  }
 }
 
 window.loadJobDetail = loadJobDetail;

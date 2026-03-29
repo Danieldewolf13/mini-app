@@ -2,18 +2,18 @@
   <div class="section-head">
     <div>
       <p class="section-kicker">Planning</p>
-      <h2>Appointments</h2>
+      <h2>Upcoming</h2>
     </div>
   </div>
 
-  <div class="appointment-list">
+  <div class="appointment-list compact-list">
     <% if (appointments.length) { %>
       <% appointments.forEach((appt) => { %>
-        <article class="appointment-card">
-          <strong>#<%= appt.id %> · <%= appt.scheduled_at_label %></strong>
-          <p><%= appt.client_name || "-" %></p>
-          <p class="muted"><%= appt.technician_name || "Unassigned" %></p>
-        </article>
+        <button class="appointment-card" type="button" data-job-id="<%= appt.id %>">
+          <strong><%= appt.scheduled_at_label %></strong>
+          <p>#<%= appt.id %> · <%= appt.client_name || "-" %></p>
+          <p class="muted"><%= appt.technician_name || "Unassigned" %> · <%= appt.afspraak_type_label || "-" %></p>
+        </button>
       <% }) %>
     <% } else { %>
       <p class="empty-state">Geen afspraken in de komende twee dagen.</p>

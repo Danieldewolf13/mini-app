@@ -132,7 +132,6 @@ app.get("/dispatcher/dashboard", async (req, res) => {
       activeNav: "dashboard",
       actions: [
         { href: settings.billitBaseUrl, label: "Open Billit", variant: "ghost", external: true },
-        { href: "/api/dashboard", label: "Live JSON", variant: "ghost", external: true },
       ],
       rightPanel: "dispatcher/partials/job_detail_panel",
       ...payload,

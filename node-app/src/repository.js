@@ -253,7 +253,11 @@ function buildKpis({ jobs, technicians, appointments, queue }) {
   const freeTech = technicians.filter((tech) => Number(tech.active_jobs || 0) === 0).length;
 
   return {
-    requires_action: queue.unassigned.length + queue.overdue.length,
+    requires_action:
+      queue.unassigned.length +
+      queue.overdue.length +
+      queue.waiting_confirmation.length +
+      queue.missing_documents.length,
     urgent,
     free_tech: freeTech,
     upcoming: appointments.length,
@@ -263,36 +267,49 @@ function buildKpis({ jobs, technicians, appointments, queue }) {
 function buildQueue(jobs) {
   const now = Date.now();
 
-  const unassigned = jobs
-    .filter((job) => !job.technician_name)
-    .slice(0, 6)
-    .map((job) => ({
+  const buckets = {
+    unassigned: [],
+    overdue: [],
+    waiting_confirmation: [],
+    missing_documents: [],
+  };
+
+  for (const job of jobs) {
+    const createdAt = new Date(job.created_at).getTime();
+    const isOverdue =
+      !Number.isNaN(createdAt) &&
+      ["new", "waiting_dispatcher", "assigned"].includes(job.status) &&
+      now - createdAt > 4 * 60 * 60 * 1000;
+    const isWaitingConfirmation = job.payment_status === "waiting_confirmation";
+    const isMissingDocuments =
+      !job.invoice_number && ["partial", "paid_full", "waiting_confirmation"].includes(job.payment_status);
+
+    const item = {
       id: job.id,
-      city: job.city || "-",
       client: job.client,
-      status: job.status_label,
-    }));
-
-  const overdue = jobs
-    .filter((job) => {
-      const createdAt = new Date(job.created_at).getTime();
-      if (Number.isNaN(createdAt)) {
-        return false;
-      }
-
-      const isWaiting = ["new", "waiting_dispatcher", "assigned"].includes(job.status);
-      const olderThanFourHours = now - createdAt > 4 * 60 * 60 * 1000;
-      return isWaiting && olderThanFourHours;
-    })
-    .slice(0, 6)
-    .map((job) => ({
-      id: job.id,
       city: job.city || "-",
-      client: job.client,
       status: job.status_label,
-    }));
+      technician: job.technician || "Unassigned",
+      created_at: job.created_at_label,
+    };
 
-  return { unassigned, overdue };
+    if (!job.technician_name) {
+      buckets.unassigned.push(item);
+    } else if (isOverdue) {
+      buckets.overdue.push(item);
+    } else if (isWaitingConfirmation) {
+      buckets.waiting_confirmation.push(item);
+    } else if (isMissingDocuments) {
+      buckets.missing_documents.push(item);
+    }
+  }
+
+  return {
+    unassigned: buckets.unassigned.slice(0, 6),
+    overdue: buckets.overdue.slice(0, 6),
+    waiting_confirmation: buckets.waiting_confirmation.slice(0, 6),
+    missing_documents: buckets.missing_documents.slice(0, 6),
+  };
 }
 
 async function buildDashboardPayload() {
@@ -370,12 +387,33 @@ async function buildJobDetailPayload(id) {
   const appointments = await fetchAppointmentsByJobId(id);
   const latestAppointment = appointments[0];
   const documents = [];
+  if (latestAppointment) {
+    documents.push({
+      name: `Appointment · ${formatAfspraakType(latestAppointment.afspraak_type)}`,
+      verified: latestAppointment.status || "-",
+    });
+  }
+  if (job.invoice_number) {
+    documents.push({
+      name: `Invoice · ${job.invoice_number}`,
+      verified: "linked",
+    });
+  } else if (["partial", "paid_full", "waiting_confirmation"].includes(job.payment_status)) {
+    documents.push({
+      name: "Invoice",
+      verified: "missing",
+    });
+  }
   const finance = {
     status: job.payment_status_label,
     method: job.payment_method_label,
     invoice: job.invoice_number || "-",
     amount_excl_vat: job.amount_excl_vat_label,
     receiver: job.payment_receiver_kind,
+  };
+  const actions = {
+    assign_label: job.technician ? "Reassign technician" : "Assign technician",
+    status_label: `Update status · ${job.status_label}`,
   };
 
   return {
@@ -401,6 +439,7 @@ async function buildJobDetailPayload(id) {
       : null,
     documents,
     finance,
+    actions,
   };
 }
 

@@ -290,11 +290,41 @@ select {
   gap: 10px;
   padding: 10px 12px;
   font-size: 14px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--line);
 }
 
 .job-row.danger {
   border-color: rgba(199, 81, 81, 0.24);
   color: var(--danger);
+}
+
+.job-row.warning {
+  border-color: rgba(208, 164, 54, 0.34);
+  color: #8c6615;
+}
+
+.job-row.info {
+  border-color: rgba(41, 75, 143, 0.24);
+}
+
+.job-row-main,
+.job-row-side {
+  display: grid;
+  gap: 2px;
+}
+
+.job-row-main strong,
+.job-row-side strong {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 20px;
+}
+
+.job-row-side {
+  justify-items: end;
+  color: var(--muted);
 }
 
 .jobs-list,
@@ -360,6 +390,21 @@ select {
   padding: 12px 14px;
 }
 
+.compact-list {
+  gap: 10px;
+}
+
+.appointment-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.appointment-card:hover,
+.job-row:hover {
+  border-color: rgba(41, 75, 143, 0.28);
+}
+
 .tech-card.free {
   border-color: rgba(46, 169, 90, 0.25);
 }
@@ -378,6 +423,10 @@ select {
   border: 1px solid var(--line);
   border-radius: 16px;
   overflow: hidden;
+}
+
+.map-panel .section-head {
+  margin-bottom: 12px;
 }
 
 .filters-panel {
