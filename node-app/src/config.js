@@ -23,6 +23,8 @@ const settings = {
   dispatcherPassword: process.env.MINI_APP_DISPATCHER_PASSWORD || "",
   dispatcherName: process.env.MINI_APP_DISPATCHER_NAME || "Ivana",
   technicianPassword: process.env.MINI_APP_TECHNICIAN_PASSWORD || "",
+  setupCode: process.env.MINI_APP_SETUP_CODE || "",
+  resetCode: process.env.MINI_APP_RESET_CODE || process.env.MINI_APP_SETUP_CODE || "",
 };
 
 module.exports = { settings };

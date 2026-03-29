@@ -1,8 +1,12 @@
 const crypto = require("crypto");
 const { settings } = require("./config");
+const { query } = require("./db");
 const { fetchUserByTechKey } = require("./repository");
 
 const COOKIE_NAME = settings.authCookieName;
+const DEFAULT_REMEMBER_SECONDS = 30 * 24 * 60 * 60;
+
+let schemaReadyPromise = null;
 
 function parseCookies(header) {
   return String(header || "")
@@ -26,28 +30,125 @@ function sign(value) {
   return crypto.createHmac("sha256", settings.sessionSecret).update(value).digest("base64url");
 }
 
+function normalizeUsername(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function hashPassword(password) {
+  const iterations = 120000;
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.pbkdf2Sync(password, salt, iterations, 32, "sha256").toString("hex");
+  return `pbkdf2$${iterations}$${salt}$${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  const [algorithm, iterationRaw, salt, expectedHash] = String(storedHash || "").split("$");
+  if (algorithm !== "pbkdf2" || !iterationRaw || !salt || !expectedHash) {
+    return false;
+  }
+
+  const iterations = Number(iterationRaw);
+  if (!Number.isFinite(iterations)) {
+    return false;
+  }
+
+  const computed = crypto.pbkdf2Sync(String(password || ""), salt, iterations, 32, "sha256").toString("hex");
+  const a = Buffer.from(computed);
+  const b = Buffer.from(expectedHash);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+async function ensureAuthSchema() {
+  if (!schemaReadyPromise) {
+    schemaReadyPromise = query(`
+      CREATE TABLE IF NOT EXISTS auth_users (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        username VARCHAR(100) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL DEFAULT 'technician',
+        tg_id BIGINT NULL,
+        tech_key VARCHAR(50) NULL,
+        full_name VARCHAR(191) NOT NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uniq_auth_username (username),
+        KEY idx_auth_role_active (role, is_active),
+        KEY idx_auth_tg (tg_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  }
+
+  return schemaReadyPromise;
+}
+
+async function findAuthUserByUsername(username) {
+  await ensureAuthSchema();
+  const rows = await query(
+    `
+      SELECT id, username, password_hash, role, tg_id, tech_key, full_name, is_active
+      FROM auth_users
+      WHERE LOWER(username) = LOWER(?)
+      LIMIT 1
+    `,
+    [normalizeUsername(username)]
+  );
+  return rows[0] || null;
+}
+
+async function createAuthUser({ username, password, role, fullName, tgId = null, techKey = null }) {
+  await ensureAuthSchema();
+  const normalizedUsername = normalizeUsername(username);
+
+  await query(
+    `
+      INSERT INTO auth_users (username, password_hash, role, tg_id, tech_key, full_name, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, 1)
+    `,
+    [normalizedUsername, hashPassword(password), role, tgId, techKey, fullName]
+  );
+
+  return findAuthUserByUsername(normalizedUsername);
+}
+
+async function updateAuthUserPassword(username, password) {
+  await ensureAuthSchema();
+  await query(
+    `
+      UPDATE auth_users
+      SET password_hash = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE LOWER(username) = LOWER(?)
+    `,
+    [hashPassword(password), normalizeUsername(username)]
+  );
+}
+
 function serializeUser(user) {
   return {
     username: user.username,
-    name: user.name,
+    name: user.name || user.full_name,
     role: user.role,
     tg_id: user.tg_id || null,
     tech_key: user.tech_key || null,
   };
 }
 
-function buildCookieValue(user) {
+function buildCookieValue(user, options = {}) {
+  const maxAge = options.remember ? DEFAULT_REMEMBER_SECONDS : settings.sessionTtlSeconds;
   const payload = {
     ...serializeUser(user),
-    exp: Date.now() + settings.sessionTtlSeconds * 1000,
+    remember: Boolean(options.remember),
+    exp: Date.now() + maxAge * 1000,
   };
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${encoded}.${sign(encoded)}`;
 }
 
-function buildSetCookieHeader(user) {
+function buildSetCookieHeader(user, options = {}) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  return `${COOKIE_NAME}=${buildCookieValue(user)}; Max-Age=${settings.sessionTtlSeconds}; Path=/; HttpOnly; SameSite=Lax${secure}`;
+  const maxAge = options.remember ? DEFAULT_REMEMBER_SECONDS : settings.sessionTtlSeconds;
+  return `${COOKIE_NAME}=${buildCookieValue(user, options)}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax${secure}`;
 }
 
 function buildClearCookieHeader() {
@@ -142,12 +243,27 @@ function filterNavigationForUser(navigation, user) {
   return navigation.filter((item) => canAccessNav(user, item.key));
 }
 
+function isRememberRequested(value) {
+  return value === "1" || value === "true" || value === "on";
+}
+
 async function authenticateCredentials(usernameInput, passwordInput) {
-  const username = String(usernameInput || "").trim().toLowerCase();
+  const username = normalizeUsername(usernameInput);
   const password = String(passwordInput || "");
 
   if (!username || !password) {
     return null;
+  }
+
+  const dbUser = await findAuthUserByUsername(username);
+  if (dbUser && dbUser.is_active && verifyPassword(password, dbUser.password_hash)) {
+    return {
+      username: dbUser.username,
+      name: dbUser.full_name,
+      role: dbUser.role,
+      tg_id: dbUser.tg_id,
+      tech_key: dbUser.tech_key,
+    };
   }
 
   if (settings.adminPassword && username === settings.adminUser.toLowerCase() && password === settings.adminPassword) {
@@ -188,6 +304,75 @@ async function authenticateCredentials(usernameInput, passwordInput) {
   };
 }
 
+async function registerAccount({ username, password, fullName, role, techKey, setupCode }) {
+  const normalizedRole = String(role || "").trim().toLowerCase();
+  const normalizedUsername = normalizeUsername(username);
+  const safePassword = String(password || "");
+  const safeName = String(fullName || "").trim();
+
+  if (!normalizedUsername || safePassword.length < 8) {
+    throw new Error("Gebruik een geldige gebruikersnaam en een wachtwoord van minstens 8 tekens.");
+  }
+
+  if (!["admin", "dispatcher", "technician"].includes(normalizedRole)) {
+    throw new Error("Ongeldige rol voor registratie.");
+  }
+
+  const existing = await findAuthUserByUsername(normalizedUsername);
+  if (existing) {
+    throw new Error("Deze gebruikersnaam bestaat al.");
+  }
+
+  if (normalizedRole === "technician") {
+    const technician = await fetchUserByTechKey(techKey);
+    if (!technician) {
+      throw new Error("Onbekende techniekercode.");
+    }
+
+    return createAuthUser({
+      username: normalizedUsername,
+      password: safePassword,
+      role: "technician",
+      fullName: technician.full_name,
+      tgId: technician.tg_id,
+      techKey: technician.tech_key,
+    });
+  }
+
+  if (!settings.setupCode || String(setupCode || "") !== settings.setupCode) {
+    throw new Error("Ongeldige registratiecode.");
+  }
+
+  return createAuthUser({
+    username: normalizedUsername,
+    password: safePassword,
+    role: normalizedRole,
+    fullName: safeName || normalizedUsername,
+  });
+}
+
+async function resetPassword({ username, password, resetCode, actor }) {
+  const normalizedUsername = normalizeUsername(username);
+  const safePassword = String(password || "");
+
+  if (!normalizedUsername || safePassword.length < 8) {
+    throw new Error("Gebruik een geldige gebruikersnaam en een wachtwoord van minstens 8 tekens.");
+  }
+
+  const existing = await findAuthUserByUsername(normalizedUsername);
+  if (!existing) {
+    throw new Error("Gebruiker niet gevonden.");
+  }
+
+  if (!actor || actor.role !== "admin") {
+    if (!settings.resetCode || String(resetCode || "") !== settings.resetCode) {
+      throw new Error("Ongeldige resetcode.");
+    }
+  }
+
+  await updateAuthUserPassword(normalizedUsername, safePassword);
+}
+
 module.exports = {
   authenticateCredentials,
   buildClearCookieHeader,
@@ -195,9 +380,13 @@ module.exports = {
   canAccessNav,
   canAssign,
   canViewFinance,
+  ensureAuthSchema,
   filterNavigationForUser,
+  isRememberRequested,
+  registerAccount,
   requireAuthApi,
   requireAuthPage,
+  resetPassword,
   serializeUser,
   withAuth,
 };

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registratie | mini app</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=auth-1">
+</head>
+<body class="auth-body">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <p class="section-kicker">Dispatcher mini app</p>
+      <h1>Registratie</h1>
+      <p class="auth-copy">Maak een login aan voor admin, dispatcher of technieker.</p>
+
+      <% if (error) { %>
+        <div class="auth-error"><%= error %></div>
+      <% } %>
+
+      <% if (success) { %>
+        <div class="auth-success"><%= success %></div>
+      <% } %>
+
+      <form class="auth-form" method="post" action="/register">
+        <label class="auth-field">
+          <span>Gebruikersnaam</span>
+          <input type="text" name="username" required placeholder="bv. ivana of yas">
+        </label>
+
+        <label class="auth-field">
+          <span>Volledige naam</span>
+          <input type="text" name="full_name" placeholder="Voor admin of dispatcher">
+        </label>
+
+        <label class="auth-field">
+          <span>Rol</span>
+          <select name="role" required>
+            <option value="dispatcher">Dispatcher</option>
+            <option value="technician">Technieker</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+
+        <label class="auth-field">
+          <span>Techniekercode</span>
+          <input type="text" name="tech_key" placeholder="Alleen voor technieker, bv. YAS">
+        </label>
+
+        <label class="auth-field">
+          <span>Registratiecode</span>
+          <input type="password" name="setup_code" placeholder="Voor admin/dispatcher">
+        </label>
+
+        <label class="auth-field">
+          <span>Wachtwoord</span>
+          <input type="password" name="password" required placeholder="Minstens 8 tekens">
+        </label>
+
+        <button class="auth-submit" type="submit">Login aanmaken</button>
+      </form>
+
+      <div class="auth-links">
+        <a href="/login">Terug naar login</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

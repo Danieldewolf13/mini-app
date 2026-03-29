@@ -334,6 +334,14 @@ select {
   gap: 6px;
 }
 
+.auth-field select {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
 .auth-field span {
   font-size: 14px;
   font-weight: 600;
@@ -358,6 +366,39 @@ select {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   cursor: pointer;
+}
+
+.auth-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.auth-check input {
+  width: 18px;
+  height: 18px;
+}
+
+.auth-links {
+  display: flex;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.auth-links a {
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-success {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(46, 169, 90, 0.22);
+  border-radius: 14px;
+  background: rgba(46, 169, 90, 0.08);
+  color: var(--success);
 }
 
 .dashboard-page,

@@ -10,9 +10,13 @@ const {
   canAccessNav,
   canAssign,
   canViewFinance,
+  ensureAuthSchema,
   filterNavigationForUser,
+  isRememberRequested,
+  registerAccount,
   requireAuthApi,
   requireAuthPage,
+  resetPassword,
   serializeUser,
   withAuth,
 } = require("./auth");
@@ -36,6 +40,14 @@ app.set("views", viewsDir);
 app.use(express.urlencoded({ extended: false }));
 app.use("/static", express.static(staticDir));
 app.use(withAuth);
+app.use(async (_req, _res, next) => {
+  try {
+    await ensureAuthSchema();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 function emptyDashboardPayload(errorMessage = null) {
   return {
@@ -373,8 +385,69 @@ app.post("/login", async (req, res) => {
     return;
   }
 
-  res.setHeader("Set-Cookie", buildSetCookieHeader(user));
+  res.setHeader("Set-Cookie", buildSetCookieHeader(user, { remember: isRememberRequested(req.body.remember) }));
   res.redirect(nextPath.startsWith("/") ? nextPath : "/dispatcher/dashboard");
+});
+
+app.get("/register", (req, res) => {
+  res.render("auth/register", {
+    error: null,
+    success: null,
+  });
+});
+
+app.post("/register", async (req, res) => {
+  try {
+    await registerAccount({
+      username: req.body.username,
+      password: req.body.password,
+      fullName: req.body.full_name,
+      role: req.body.role,
+      techKey: req.body.tech_key,
+      setupCode: req.body.setup_code,
+    });
+
+    res.render("auth/register", {
+      error: null,
+      success: "Login aangemaakt. Je kunt nu inloggen.",
+    });
+  } catch (error) {
+    res.status(400).render("auth/register", {
+      error: error.message || String(error),
+      success: null,
+    });
+  }
+});
+
+app.get("/reset-password", (req, res) => {
+  res.render("auth/reset-password", {
+    error: null,
+    success: null,
+    isAdmin: Boolean(req.authUser?.role === "admin"),
+  });
+});
+
+app.post("/reset-password", async (req, res) => {
+  try {
+    await resetPassword({
+      username: req.body.username,
+      password: req.body.password,
+      resetCode: req.body.reset_code,
+      actor: req.authUser,
+    });
+
+    res.render("auth/reset-password", {
+      error: null,
+      success: "Wachtwoord bijgewerkt.",
+      isAdmin: Boolean(req.authUser?.role === "admin"),
+    });
+  } catch (error) {
+    res.status(400).render("auth/reset-password", {
+      error: error.message || String(error),
+      success: null,
+      isAdmin: Boolean(req.authUser?.role === "admin"),
+    });
+  }
 });
 
 app.post("/logout", (req, res) => {
