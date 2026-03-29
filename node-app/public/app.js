@@ -4,6 +4,43 @@ const jobs = dashboardData.jobs || [];
 let map;
 let focusMarker;
 
+function setupSidebarToggle() {
+  const toggle = document.getElementById("sidebarToggle");
+  const shell = document.querySelector(".app-shell");
+
+  if (!toggle || !shell) {
+    return;
+  }
+
+  const storageKey = "mini-app-sidebar-collapsed";
+
+  function applyState(collapsed) {
+    shell.classList.toggle("sidebar-collapsed", collapsed);
+    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  }
+
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored === null) {
+      applyState(window.innerWidth <= 900);
+    } else {
+      applyState(stored === "1");
+    }
+  } catch (error) {
+    applyState(window.innerWidth <= 900);
+  }
+
+  toggle.addEventListener("click", () => {
+    const collapsed = !shell.classList.contains("sidebar-collapsed");
+    applyState(collapsed);
+    try {
+      window.localStorage.setItem(storageKey, collapsed ? "1" : "0");
+    } catch (error) {
+      // ignore storage issues and keep UI functional
+    }
+  });
+}
+
 function normalize(value) {
   return String(value || "").toLowerCase().trim();
 }
@@ -176,6 +213,7 @@ document.addEventListener("click", (event) => {
 });
 
 initMap();
+setupSidebarToggle();
 bindSearch();
 filterJobCards();
 window.focusAddress = focusAddress;
