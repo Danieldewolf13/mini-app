@@ -13,6 +13,7 @@ const {
 const ACTIVE_JOB_SELECT = `
   SELECT
     c.id,
+    c.assigned_to,
     c.category,
     c.problem_type,
     c.work_type,
@@ -74,6 +75,7 @@ async function fetchUpcomingAppointments() {
   const sql = `
     SELECT
       c.id,
+      c.assigned_to AS technician_id,
       c.address_raw,
       cl.client_name,
       u.full_name AS technician_name,
@@ -153,6 +155,24 @@ async function fetchPlanningTechnicians() {
   `;
 
   return query(sql);
+}
+
+async function fetchUserByTechKey(techKey) {
+  const sql = `
+    SELECT
+      u.tg_id,
+      u.full_name,
+      u.tech_key,
+      u.role,
+      u.is_active
+    FROM users u
+    WHERE u.is_active = 1
+      AND LOWER(u.tech_key) = LOWER(?)
+    LIMIT 1
+  `;
+
+  const rows = await query(sql, [String(techKey || "").trim()]);
+  return rows[0] || null;
 }
 
 async function fetchPlanningJobs(startDate, endDate) {
@@ -237,6 +257,7 @@ function normalizeJob(job) {
   job.client = job.client_name || "-";
   job.city = extractCity(job.address_raw);
   job.technician = job.technician_name || null;
+  job.technician_id = job.assigned_to || null;
   job.status = status;
   job.category = category;
 
@@ -418,6 +439,7 @@ async function buildJobDetailPayload(id) {
 
   return {
     id: job.id,
+    technician_id: job.technician_id,
     client: job.client,
     phone: job.phone || "-",
     address: job.address_raw || "-",
@@ -447,6 +469,7 @@ module.exports = {
   buildDashboardPayload,
   buildJobsPayload,
   buildJobDetailPayload,
+  fetchUserByTechKey,
   fetchPlanningJobs,
   fetchPlanningTechnicians,
 };

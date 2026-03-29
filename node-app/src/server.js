@@ -3,6 +3,19 @@ const path = require("path");
 const { settings } = require("./config");
 const { buildDashboardPayload, buildJobsPayload, buildJobDetailPayload } = require("./repository");
 const { getPlanningData } = require("./services/planningService");
+const {
+  authenticateCredentials,
+  buildClearCookieHeader,
+  buildSetCookieHeader,
+  canAccessNav,
+  canAssign,
+  canViewFinance,
+  filterNavigationForUser,
+  requireAuthApi,
+  requireAuthPage,
+  serializeUser,
+  withAuth,
+} = require("./auth");
 
 const app = express();
 const staticDir = path.resolve(__dirname, "../public");
@@ -20,7 +33,9 @@ const navigation = [
 
 app.set("view engine", "ejs");
 app.set("views", viewsDir);
+app.use(express.urlencoded({ extended: false }));
 app.use("/static", express.static(staticDir));
+app.use(withAuth);
 
 function emptyDashboardPayload(errorMessage = null) {
   return {
@@ -74,6 +89,202 @@ async function loadJobsPayload() {
   }
 }
 
+function buildQueue(jobs) {
+  const now = Date.now();
+  const buckets = {
+    unassigned: [],
+    overdue: [],
+    waiting_confirmation: [],
+    missing_documents: [],
+  };
+
+  for (const job of jobs) {
+    const createdAt = new Date(job.created_at).getTime();
+    const isOverdue =
+      !Number.isNaN(createdAt) &&
+      ["new", "waiting_dispatcher", "assigned"].includes(job.status) &&
+      now - createdAt > 4 * 60 * 60 * 1000;
+    const isWaitingConfirmation = job.payment_status === "waiting_confirmation";
+    const isMissingDocuments =
+      !job.invoice_number && ["partial", "paid_full", "waiting_confirmation"].includes(job.payment_status);
+
+    const item = {
+      id: job.id,
+      client: job.client,
+      city: job.city || "-",
+      status: job.status_label,
+      technician: job.technician || "Unassigned",
+      created_at: job.created_at_label,
+    };
+
+    if (!job.technician_id) {
+      buckets.unassigned.push(item);
+    } else if (isOverdue) {
+      buckets.overdue.push(item);
+    } else if (isWaitingConfirmation) {
+      buckets.waiting_confirmation.push(item);
+    } else if (isMissingDocuments) {
+      buckets.missing_documents.push(item);
+    }
+  }
+
+  return {
+    unassigned: buckets.unassigned.slice(0, 6),
+    overdue: buckets.overdue.slice(0, 6),
+    waiting_confirmation: buckets.waiting_confirmation.slice(0, 6),
+    missing_documents: buckets.missing_documents.slice(0, 6),
+  };
+}
+
+function buildKpis({ jobs, technicians, appointments, queue }) {
+  const urgent = jobs.filter((job) => {
+    const status = String(job.status || "").toLowerCase();
+    const category = String(job.category || "").toLowerCase();
+    return category.includes("dring") || status === "on_the_way";
+  }).length;
+
+  const freeTech = technicians.filter((tech) => Number(tech.active_jobs || 0) === 0).length;
+
+  return {
+    requires_action:
+      queue.unassigned.length +
+      queue.overdue.length +
+      queue.waiting_confirmation.length +
+      queue.missing_documents.length,
+    urgent,
+    free_tech: freeTech,
+    upcoming: appointments.length,
+  };
+}
+
+function filterJobsForUser(jobs, user) {
+  if (!user || user.role !== "technician") {
+    return jobs;
+  }
+
+  return jobs.filter((job) => Number(job.technician_id) === Number(user.tg_id));
+}
+
+function filterAppointmentsForUser(appointments, user) {
+  if (!user || user.role !== "technician") {
+    return appointments;
+  }
+
+  return appointments.filter((appointment) => Number(appointment.technician_id) === Number(user.tg_id));
+}
+
+function filterTechniciansForUser(technicians, user) {
+  if (!user || user.role !== "technician") {
+    return technicians;
+  }
+
+  return technicians.filter((tech) => Number(tech.tg_id) === Number(user.tg_id));
+}
+
+function scopeDashboardPayload(payload, user) {
+  if (!user || user.role !== "technician") {
+    return payload;
+  }
+
+  const jobs = filterJobsForUser(payload.jobs, user);
+  const appointments = filterAppointmentsForUser(payload.appointments, user);
+  const technicians = filterTechniciansForUser(payload.technicians, user);
+  const queue = buildQueue(jobs);
+  const kpis = buildKpis({ jobs, technicians, appointments, queue });
+
+  const statusCounts = jobs.reduce((acc, job) => {
+    acc[job.status] = (acc[job.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const categoryCounts = jobs.reduce((acc, job) => {
+    acc[job.category] = (acc[job.category] || 0) + 1;
+    return acc;
+  }, {});
+
+  return {
+    ...payload,
+    jobs,
+    appointments,
+    technicians,
+    queue,
+    kpis,
+    status_counts: statusCounts,
+    category_counts: categoryCounts,
+    regular_jobs: jobs.filter((job) => job.group_type === "regular").length,
+    corp_jobs: jobs.filter((job) => job.group_type === "corp").length,
+  };
+}
+
+function scopeJobsPayload(payload, user) {
+  if (!user || user.role !== "technician") {
+    return payload;
+  }
+
+  const jobs = filterJobsForUser(payload.jobs, user);
+  const technicians = filterTechniciansForUser(payload.technicians, user);
+
+  return {
+    ...payload,
+    jobs,
+    technicians,
+    filters: {
+      statuses: [...new Set(jobs.map((job) => job.status).filter(Boolean))],
+      technicians: technicians.map((tech) => ({ id: tech.tg_id, name: tech.full_name })),
+    },
+  };
+}
+
+function scopePlanningPayload(payload, user) {
+  if (!user || user.role !== "technician") {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    technicians: payload.technicians.filter((tech) => String(tech.id) === String(user.tg_id)),
+    jobs: payload.jobs.filter((job) => String(job.technician_id) === String(user.tg_id)),
+    week: payload.week
+      ? {
+          ...payload.week,
+          totals: payload.week.totals.filter((item) => String(item.technician_id) === String(user.tg_id)),
+        }
+      : null,
+  };
+}
+
+function scopeJobDetailPayload(payload, user) {
+  if (!payload) {
+    return payload;
+  }
+
+  if (user?.role === "technician" && Number(payload.technician_id) !== Number(user.tg_id)) {
+    return null;
+  }
+
+  const canSeeFinance = canViewFinance(user);
+  const canAssignJob = canAssign(user);
+
+  return {
+    ...payload,
+    finance: canSeeFinance
+      ? payload.finance
+      : {
+          status: "Geen toegang",
+          method: "-",
+          invoice: "-",
+          amount_excl_vat: "-",
+          receiver: "-",
+        },
+    finance_locked: !canSeeFinance,
+    actions: {
+      assign_label: canAssignJob ? payload.actions?.assign_label || "Assign technician" : null,
+      status_label:
+        user?.role === "technician" ? "Update eigen status" : payload.actions?.status_label || "Change status",
+    },
+  };
+}
+
 function baseViewModel({
   pageTitle,
   activeNav,
@@ -85,16 +296,18 @@ function baseViewModel({
   extraScripts = [],
   ...payload
 }) {
+  const currentUser = payload.currentUser || null;
   return {
     pageTitle,
     activeNav,
     billitBaseUrl: settings.billitBaseUrl,
     currentPath: activeNav,
-    navigation,
+    navigation: filterNavigationForUser(navigation, currentUser),
     dbError,
     contentClass,
     rightPanel,
     actions,
+    currentUser,
     extraStyles,
     extraScripts,
     serialize: (value) => JSON.stringify(value ?? []),
@@ -102,7 +315,8 @@ function baseViewModel({
   };
 }
 
-function renderPlaceholder(res, key, title, description) {
+function renderPlaceholder(res, key, title, description, currentUser, statusCode = 200) {
+  res.status(statusCode);
   res.render(
     "dispatcher/placeholder",
     baseViewModel({
@@ -111,51 +325,98 @@ function renderPlaceholder(res, key, title, description) {
       title,
       description,
       actions: [],
+      currentUser,
     })
   );
 }
 
+function requireNavAccess(key) {
+  return (req, res, next) => {
+    if (canAccessNav(req.authUser, key)) {
+      next();
+      return;
+    }
+
+    renderPlaceholder(res, key, "Geen toegang", "Je hebt geen toegang tot deze module.", req.authUser, 403);
+  };
+}
+
 app.get("/", (req, res) => {
-  res.redirect("/dispatcher/dashboard");
+  res.redirect(req.authUser ? "/dispatcher/dashboard" : "/login");
 });
 
 app.get("/dispatcher", (req, res) => {
-  res.redirect("/dispatcher/dashboard");
+  res.redirect(req.authUser ? "/dispatcher/dashboard" : "/login");
 });
 
-app.get("/dispatcher/dashboard", async (req, res) => {
-  const payload = await loadDashboardPayload();
+app.get("/login", (req, res) => {
+  if (req.authUser) {
+    res.redirect("/dispatcher/dashboard");
+    return;
+  }
+
+  res.render("auth/login", {
+    error: null,
+    nextPath: String(req.query.next || "/dispatcher/dashboard"),
+  });
+});
+
+app.post("/login", async (req, res) => {
+  const nextPath = String(req.body.next || "/dispatcher/dashboard");
+  const user = await authenticateCredentials(req.body.username, req.body.password);
+
+  if (!user) {
+    res.status(401).render("auth/login", {
+      error: "Login mislukt. Controleer gebruikersnaam en wachtwoord.",
+      nextPath,
+    });
+    return;
+  }
+
+  res.setHeader("Set-Cookie", buildSetCookieHeader(user));
+  res.redirect(nextPath.startsWith("/") ? nextPath : "/dispatcher/dashboard");
+});
+
+app.post("/logout", (req, res) => {
+  res.setHeader("Set-Cookie", buildClearCookieHeader());
+  res.redirect("/login");
+});
+
+app.get("/dispatcher/dashboard", requireAuthPage, requireNavAccess("dashboard"), async (req, res) => {
+  const payload = scopeDashboardPayload(await loadDashboardPayload(), req.authUser);
   res.render(
     "dispatcher/dashboard",
     baseViewModel({
       pageTitle: "Dispatcher dashboard",
       activeNav: "dashboard",
       contentClass: "content--fullwidth dashboard-content",
-      actions: [
-        { href: settings.billitBaseUrl, label: "Open Billit", variant: "ghost", external: true },
-      ],
+      actions: canViewFinance(req.authUser)
+        ? [{ href: settings.billitBaseUrl, label: "Open Billit", variant: "ghost", external: true }]
+        : [],
+      currentUser: serializeUser(req.authUser),
       ...payload,
     })
   );
 });
 
-app.get("/dispatcher/jobs", async (req, res) => {
-  const payload = await loadJobsPayload();
+app.get("/dispatcher/jobs", requireAuthPage, requireNavAccess("jobs"), async (req, res) => {
+  const payload = scopeJobsPayload(await loadJobsPayload(), req.authUser);
   res.render(
     "dispatcher/jobs",
     baseViewModel({
       pageTitle: "Jobs",
       activeNav: "jobs",
-      actions: [{ href: "#", label: "+ Job", variant: "primary" }],
+      actions: req.authUser?.role === "technician" ? [] : [{ href: "#", label: "+ Job", variant: "primary" }],
       jobs: payload.jobs,
       technicians: payload.technicians,
       filters: payload.filters,
       dbError: payload.db_error,
+      currentUser: serializeUser(req.authUser),
     })
   );
 });
 
-app.get("/dispatcher/planning", (req, res) => {
+app.get("/dispatcher/planning", requireAuthPage, requireNavAccess("planning"), (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   res.render(
     "dispatcher/planning",
@@ -168,34 +429,59 @@ app.get("/dispatcher/planning", (req, res) => {
       planning_date: today,
       planning_view: "day",
       actions: [],
+      currentUser: serializeUser(req.authUser),
     })
   );
 });
 
-app.get("/dispatcher/calendar", (req, res) => {
-  renderPlaceholder(res, "calendar", "Calendar", "Calendar wordt in de volgende stap aangesloten op de dispatcherstructuur.");
+app.get("/dispatcher/calendar", requireAuthPage, requireNavAccess("calendar"), (req, res) => {
+  renderPlaceholder(
+    res,
+    "calendar",
+    "Calendar",
+    "Calendar wordt in de volgende stap aangesloten op de dispatcherstructuur.",
+    serializeUser(req.authUser)
+  );
 });
 
-app.get("/dispatcher/technicians", (req, res) => {
-  renderPlaceholder(res, "technicians", "Technicians", "Techniekerbeheer komt op deze pagina zodra de basisstructuur vastligt.");
+app.get("/dispatcher/technicians", requireAuthPage, requireNavAccess("technicians"), (req, res) => {
+  renderPlaceholder(
+    res,
+    "technicians",
+    "Technicians",
+    "Techniekerbeheer komt op deze pagina zodra de basisstructuur vastligt.",
+    serializeUser(req.authUser)
+  );
 });
 
-app.get("/dispatcher/documents", (req, res) => {
-  renderPlaceholder(res, "documents", "Documents", "Documentcontrole komt hier in een volgende fase.");
+app.get("/dispatcher/documents", requireAuthPage, requireNavAccess("documents"), (req, res) => {
+  renderPlaceholder(
+    res,
+    "documents",
+    "Documents",
+    "Documentcontrole komt hier in een volgende fase.",
+    serializeUser(req.authUser)
+  );
 });
 
-app.get("/dispatcher/finance", (req, res) => {
-  renderPlaceholder(res, "finance", "Finance", "Finance krijgt hier later zijn eigen werkoverzicht.");
+app.get("/dispatcher/finance", requireAuthPage, requireNavAccess("finance"), (req, res) => {
+  renderPlaceholder(
+    res,
+    "finance",
+    "Finance",
+    "Finance krijgt hier later zijn eigen werkoverzicht.",
+    serializeUser(req.authUser)
+  );
 });
 
-app.get("/api/dashboard", async (req, res) => {
-  const payload = await loadDashboardPayload();
+app.get("/api/dashboard", requireAuthApi, async (req, res) => {
+  const payload = scopeDashboardPayload(await loadDashboardPayload(), req.authUser);
   res.status(payload.db_error ? 503 : 200).json(payload);
 });
 
-app.get("/api/planning", async (req, res) => {
+app.get("/api/planning", requireAuthApi, async (req, res) => {
   try {
-    const payload = await getPlanningData(req.query.date, req.query.view);
+    const payload = scopePlanningPayload(await getPlanningData(req.query.date, req.query.view), req.authUser);
     res.json(payload);
   } catch (error) {
     res.status(503).json({
@@ -208,8 +494,8 @@ app.get("/api/planning", async (req, res) => {
   }
 });
 
-app.get("/api/jobs", async (req, res) => {
-  const payload = await loadJobsPayload();
+app.get("/api/jobs", requireAuthApi, async (req, res) => {
+  const payload = scopeJobsPayload(await loadJobsPayload(), req.authUser);
   const jobs = payload.jobs.map((job) => ({
     id: job.id,
     client: job.client,
@@ -220,8 +506,8 @@ app.get("/api/jobs", async (req, res) => {
   res.status(payload.db_error ? 503 : 200).json(jobs);
 });
 
-app.get("/api/jobs/:id", async (req, res) => {
-  const payload = await buildJobDetailPayload(req.params.id);
+app.get("/api/jobs/:id", requireAuthApi, async (req, res) => {
+  const payload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
   if (!payload) {
     res.status(404).json({ error: "Job not found" });
     return;

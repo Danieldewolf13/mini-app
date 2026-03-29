@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login | mini app</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=auth-1">
+</head>
+<body class="auth-body">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <p class="section-kicker">Dispatcher mini app</p>
+      <h1>Login</h1>
+      <p class="auth-copy">Meld je aan als admin, dispatcher of technieker om je eigen werkomgeving te openen.</p>
+
+      <% if (error) { %>
+        <div class="auth-error"><%= error %></div>
+      <% } %>
+
+      <form class="auth-form" method="post" action="/login">
+        <input type="hidden" name="next" value="<%= nextPath %>">
+
+        <label class="auth-field">
+          <span>Gebruikersnaam</span>
+          <input type="text" name="username" autocomplete="username" required placeholder="bv. daniel, ivana of tech key">
+        </label>
+
+        <label class="auth-field">
+          <span>Wachtwoord</span>
+          <input type="password" name="password" autocomplete="current-password" required placeholder="Wachtwoord">
+        </label>
+
+        <button class="auth-submit" type="submit">Inloggen</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

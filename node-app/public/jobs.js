@@ -40,19 +40,29 @@ async function loadJobDetail(id) {
     ? `<div><strong>Next appointment</strong><span>${data.next_appointment.scheduled_at} · ${data.next_appointment.type}</span></div>`
     : `<div><strong>Next appointment</strong><span>Geen afspraak gepland</span></div>`;
 
-  document.getElementById("jobFinance").innerHTML = `
-    <div><strong>Status</strong><span>${data.finance.status}</span></div>
-    <div><strong>Method</strong><span>${data.finance.method}</span></div>
-    <div><strong>Invoice</strong><span>${data.finance.invoice}</span></div>
-    <div><strong>Amount</strong><span>${data.finance.amount_excl_vat}</span></div>
-    <div><strong>Receiver</strong><span>${data.finance.receiver}</span></div>
-    ${appointmentHtml}
-  `;
+  document.getElementById("jobFinance").innerHTML = data.finance_locked
+    ? `
+      <p class="muted">Geen toegang tot finance voor deze rol.</p>
+      ${appointmentHtml}
+    `
+    : `
+      <div><strong>Status</strong><span>${data.finance.status}</span></div>
+      <div><strong>Method</strong><span>${data.finance.method}</span></div>
+      <div><strong>Invoice</strong><span>${data.finance.invoice}</span></div>
+      <div><strong>Amount</strong><span>${data.finance.amount_excl_vat}</span></div>
+      <div><strong>Receiver</strong><span>${data.finance.receiver}</span></div>
+      ${appointmentHtml}
+    `;
 
   const assignBtn = document.getElementById("assignBtn");
   const statusBtn = document.getElementById("statusBtn");
   if (assignBtn) {
-    assignBtn.textContent = data.actions?.assign_label || "Assign technician";
+    if (data.actions?.assign_label) {
+      assignBtn.textContent = data.actions.assign_label;
+      assignBtn.classList.remove("hidden");
+    } else {
+      assignBtn.classList.add("hidden");
+    }
   }
   if (statusBtn) {
     statusBtn.textContent = data.actions?.status_label || "Change status";

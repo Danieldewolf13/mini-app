@@ -27,6 +27,10 @@ body {
   font-family: "Work Sans", sans-serif;
 }
 
+.auth-body {
+  min-height: 100vh;
+}
+
 a {
   color: inherit;
 }
@@ -188,6 +192,26 @@ select {
   gap: 12px;
 }
 
+.current-user-chip {
+  display: grid;
+  gap: 2px;
+  min-height: 46px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.current-user-chip strong {
+  font-size: 14px;
+}
+
+.current-user-chip span {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
 .search,
 .filters input,
 .filters select {
@@ -202,6 +226,10 @@ select {
 .actions {
   display: flex;
   gap: 10px;
+}
+
+.logout-form {
+  margin: 0;
 }
 
 .topbar-button {
@@ -257,6 +285,79 @@ select {
   display: block;
   margin-bottom: 6px;
   color: var(--danger);
+}
+
+.auth-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(100%, 440px);
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+}
+
+.auth-card h1 {
+  margin: 0 0 8px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 36px;
+  text-transform: uppercase;
+}
+
+.auth-copy {
+  margin: 0 0 18px;
+  color: var(--muted);
+}
+
+.auth-error {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(199, 81, 81, 0.24);
+  border-radius: 14px;
+  background: rgba(199, 81, 81, 0.08);
+  color: var(--danger);
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-field {
+  display: grid;
+  gap: 6px;
+}
+
+.auth-field span {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.auth-field input {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.auth-submit {
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #ffffff;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .dashboard-page,

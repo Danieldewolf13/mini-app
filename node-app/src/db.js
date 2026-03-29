@@ -29,9 +29,9 @@ async function withConnection(callback) {
   }
 }
 
-async function query(sql) {
+async function query(sql, params = []) {
   return withConnection(async (connection) => {
-    const [rows] = await connection.query(sql);
+    const [rows] = await connection.query(sql, params);
     return rows;
   });
 }

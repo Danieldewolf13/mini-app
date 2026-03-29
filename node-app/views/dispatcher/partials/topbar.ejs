@@ -10,6 +10,12 @@
 
   <div class="topbar-tools">
     <input class="search" id="global-search" placeholder="Search jobs..." />
+    <% if (currentUser) { %>
+      <div class="current-user-chip">
+        <strong><%= currentUser.name %></strong>
+        <span><%= currentUser.role %></span>
+      </div>
+    <% } %>
     <div class="actions">
       <% actions.forEach((action) => { %>
         <a
@@ -18,6 +24,11 @@
           <%= action.external ? 'target="_blank" rel="noreferrer"' : '' %>
         ><%= action.label %></a>
       <% }) %>
+      <% if (currentUser) { %>
+        <form method="post" action="/logout" class="logout-form">
+          <button type="submit" class="topbar-button">Logout</button>
+        </form>
+      <% } %>
     </div>
   </div>
 </div>
