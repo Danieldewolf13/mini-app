@@ -147,7 +147,7 @@ select {
 .detail-header h2 {
   margin: 0;
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 30px;
+  font-size: 24px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -159,7 +159,7 @@ select {
 }
 
 .topbar-copy--compact h1 {
-  font-size: 24px;
+  font-size: 20px;
 }
 
 .sidebar-toggle {
@@ -457,11 +457,11 @@ select {
 }
 
 .dashboard-page .kpi {
-  padding: 14px 18px;
+  padding: 12px 14px;
 }
 
 .dashboard-page .kpi strong {
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1;
 }
 
@@ -471,23 +471,23 @@ select {
 }
 
 .panel {
-  padding: 18px;
+  padding: 16px;
 }
 
 .dashboard-page {
-  gap: 10px;
+  gap: 8px;
 }
 
 .dashboard-row-kpis .kpis {
-  gap: 10px;
+  gap: 8px;
 }
 
 .dashboard-row-workspace {
   display: grid;
   grid-template-columns: minmax(280px, 0.95fr) minmax(420px, 1.4fr) minmax(320px, 1fr);
-  gap: 10px;
+  gap: 8px;
   align-items: stretch;
-  min-height: 470px;
+  min-height: 390px;
 }
 
 .workspace-zone,
@@ -499,22 +499,25 @@ select {
 .workspace-zone-side {
   display: grid;
   grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
-  min-height: 470px;
+  gap: 8px;
+  min-height: 390px;
 }
 
 .dashboard-row-detail {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .job-detail-panel {
-  min-height: 360px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 300px;
 }
 
 .map-zone {
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 
 .section-head {
@@ -522,7 +525,7 @@ select {
   justify-content: space-between;
   align-items: start;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .section-meta,
@@ -538,14 +541,14 @@ select {
 
 .focus-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .focus-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--bg-soft);
@@ -558,11 +561,11 @@ select {
 }
 
 .dashboard-page .focus-row strong {
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .queue-block + .queue-block {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .queue-panel,
@@ -594,18 +597,18 @@ select {
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
-  max-height: 420px;
+  max-height: 320px;
 }
 
 .jobs-panel .section-meta,
 .technicians-panel .section-meta {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .queue-block h3,
 .section h3 {
   margin: 0 0 12px;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .job-row,
@@ -621,8 +624,8 @@ select {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
+  padding: 9px 11px;
+  font-size: 13px;
   width: 100%;
   text-align: left;
   cursor: pointer;
@@ -652,7 +655,7 @@ select {
 .job-row-main strong,
 .job-row-side strong {
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 20px;
+  font-size: 17px;
   line-height: 1;
 }
 
@@ -665,11 +668,11 @@ select {
 .appointment-list,
 .tech-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .job-card {
-  padding: 14px;
+  padding: 12px;
   cursor: pointer;
 }
 
@@ -686,7 +689,7 @@ select {
 
 .job-card-head {
   align-items: start;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .job-card-head strong {
@@ -697,7 +700,7 @@ select {
 }
 
 .dashboard-page .job-card-head strong {
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .job-card-head p,
@@ -726,17 +729,17 @@ select {
   background: var(--gold-soft);
   color: #8c6615;
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   text-transform: uppercase;
 }
 
 .dashboard-page .status-pill {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .tech-card,
 .appointment-card {
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .tech-card div,
@@ -776,7 +779,7 @@ select {
 }
 
 .mini-map {
-  height: 480px;
+  height: 420px;
   border: 1px solid var(--line);
   border-radius: 16px;
   overflow: hidden;
@@ -966,32 +969,33 @@ select {
 }
 
 .job-detail {
-  padding: 18px;
+  padding: 16px;
   min-height: 100%;
 }
 
 .detail-header {
-  margin-bottom: 14px;
+  grid-column: 1 / -1;
+  margin-bottom: 4px;
 }
 
 .detail-header h2 {
-  font-size: 28px;
+  font-size: 22px;
 }
 
-.section + .section {
-  margin-top: 16px;
+.section {
+  min-width: 0;
 }
 
 .detail-stack {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .detail-stack div {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 10px 12px;
+  padding: 9px 11px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--bg-soft);
@@ -1004,7 +1008,7 @@ select {
 
 .detail-actions-panel {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .detail-inline-form {
@@ -1022,7 +1026,7 @@ select {
 }
 
 .detail-inline-form span {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
 }
@@ -1033,6 +1037,16 @@ select {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #ffffff;
+}
+
+.section-overview,
+.section-documents {
+  grid-column: 1;
+}
+
+.section-actions,
+.section-finance {
+  grid-column: 2;
 }
 
 .detail-actions button {
@@ -1113,6 +1127,10 @@ select {
     grid-template-rows: minmax(0, 1fr);
   }
 
+  .job-detail-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .mini-map {
     height: 380px;
   }
@@ -1133,6 +1151,10 @@ select {
     grid-template-areas:
       "queue jobs"
       "side side";
+  }
+
+  .job-detail-panel {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1195,6 +1217,17 @@ select {
   .detail-inline-form {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .job-detail-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .section-overview,
+  .section-documents,
+  .section-actions,
+  .section-finance {
+    grid-column: 1;
   }
 
   .dashboard-row-workspace {

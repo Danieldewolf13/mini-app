@@ -38,7 +38,7 @@ function renderJobDocuments(data) {
 
 function renderJobFinance(data) {
   const appointmentHtml = data.next_appointment
-    ? `<div><strong>Next appointment</strong><span>${escapeHtml(data.next_appointment.scheduled_at)} · ${escapeHtml(
+    ? `<div><strong>Next appointment</strong><span>${escapeHtml(data.next_appointment.scheduled_at)} - ${escapeHtml(
         data.next_appointment.type
       )}</span></div>`
     : `<div><strong>Next appointment</strong><span>Geen afspraak gepland</span></div>`;
@@ -190,7 +190,7 @@ function renderJobDetail(data) {
 
   currentJobId = data.id;
   panel.classList.remove("hidden");
-  document.getElementById("jobDetailTitle").textContent = `#${data.id} · ${data.client}`;
+  document.getElementById("jobDetailTitle").textContent = `#${data.id} - ${data.client}`;
   document.getElementById("jobOverview").innerHTML = renderJobOverview(data);
   document.getElementById("jobDocs").innerHTML = renderJobDocuments(data);
   document.getElementById("jobFinance").innerHTML = renderJobFinance(data);

@@ -1,6 +1,6 @@
 .planning-page {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .planning-toolbar {
@@ -9,6 +9,7 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  padding: 14px 16px;
 }
 
 .planning-toolbar-group {
@@ -21,22 +22,39 @@
 .toolbar-btn,
 .planning-toolbar input,
 .planning-toolbar select {
-  min-height: 40px;
+  min-height: 38px;
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9fd 100%);
   color: var(--text);
+  box-shadow: 0 8px 16px rgba(31, 53, 99, 0.06);
 }
 
 .toolbar-btn.is-active {
-  background: var(--blue);
-  border-color: var(--blue);
+  background: linear-gradient(180deg, #355ca8 0%, #294b8f 100%);
+  border-color: #294b8f;
   color: #ffffff;
+}
+
+.toolbar-btn:hover,
+.planning-toolbar input:hover,
+.planning-toolbar select:hover {
+  border-color: rgba(41, 75, 143, 0.24);
+}
+
+.view-switch {
+  display: inline-flex;
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(41, 75, 143, 0.04);
 }
 
 .planning-board {
   overflow: hidden;
+  padding: 16px;
 }
 
 .planning-layout {
@@ -53,15 +71,56 @@
 }
 
 .planning-tech-header {
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel-soft);
+  overflow: hidden;
 }
 
 .planning-tech-header strong {
   display: block;
   margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.planning-tech-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.planning-tech-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(41, 75, 143, 0.08);
+  color: var(--blue);
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 18px;
+}
+
+.planning-tech-progress {
+  height: 6px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: rgba(41, 75, 143, 0.08);
+  overflow: hidden;
+}
+
+.planning-tech-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2ea95a 0%, #d0a436 70%, #f27a6a 100%);
 }
 
 .planning-time-sidebar {
@@ -80,6 +139,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 6px;
+  scrollbar-width: thin;
 }
 
 .planning-grid {
@@ -100,7 +160,7 @@
   border: 1px solid var(--line);
   border-radius: 16px;
   overflow: hidden;
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
 }
 
 .planning-slot {
@@ -116,17 +176,28 @@
   position: absolute;
   left: 8px;
   right: 8px;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid rgba(41, 75, 143, 0.08);
   border-radius: 14px;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(24, 41, 73, 0.12);
+  box-shadow: 0 10px 20px rgba(24, 41, 73, 0.08);
   overflow: hidden;
   text-align: left;
+  display: grid;
+  gap: 4px;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.job-block:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(24, 41, 73, 0.12);
 }
 
 .job-block strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  font-size: 14px;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -134,46 +205,77 @@
 
 .job-block small {
   display: block;
-  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.job-block-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
 .job-block.status-assigned {
-  background: #3e6ad6;
-  color: #ffffff;
+  background: linear-gradient(180deg, #e8f0ff 0%, #dbe8ff 100%);
+  color: #294b8f;
 }
 
 .job-block.status-in_progress {
-  background: #2ea95a;
-  color: #ffffff;
+  background: linear-gradient(180deg, #e6f8ee 0%, #d5f1e2 100%);
+  color: #227949;
 }
 
 .job-block.status-completed,
 .job-block.status-done {
-  background: #5f6b7c;
-  color: #ffffff;
+  background: linear-gradient(180deg, #eef1f5 0%, #e3e7ec 100%);
+  color: #556171;
 }
 
 .job-block.status-unassigned,
 .job-block.status-waiting_dispatcher {
-  background: #d0a436;
-  color: #ffffff;
+  background: linear-gradient(180deg, #fff4d8 0%, #fcebb8 100%);
+  color: #8a6714;
 }
 
-.job-block.status-on_the_way,
 .job-block.status-on_the_way {
-  background: #7f56d9;
-  color: #ffffff;
+  background: linear-gradient(180deg, #efe8ff 0%, #e2d7ff 100%);
+  color: #6544b6;
+}
+
+.job-block.status-new,
+.job-block.status-waiting_confirmation {
+  background: linear-gradient(180deg, #fff1e4 0%, #ffe4cb 100%);
+  color: #9a5a1d;
 }
 
 .job-block.is-urgent {
-  outline: 2px solid #f7d673;
+  outline: 2px solid #f2a94a;
 }
 
 .job-block.is-overdue {
   box-shadow: 0 0 0 2px rgba(199, 81, 81, 0.32);
+}
+
+.job-block.status-assigned small,
+.job-block.status-in_progress small,
+.job-block.status-completed small,
+.job-block.status-done small,
+.job-block.status-unassigned small,
+.job-block.status-waiting_dispatcher small,
+.job-block.status-on_the_way small {
+  color: inherit;
+  opacity: 0.84;
+}
+
+.job-block.status-new small,
+.job-block.status-waiting_confirmation small {
+  color: inherit;
+  opacity: 0.84;
 }
 
 .planning-week-placeholder {
@@ -202,5 +304,39 @@
   .planning-header-technicians,
   .planning-grid {
     grid-template-columns: repeat(var(--planning-columns, 1), minmax(180px, 180px));
+  }
+}
+
+@media (max-width: 768px) {
+  .planning-toolbar {
+    padding: 12px;
+  }
+
+  .planning-toolbar-group {
+    width: 100%;
+  }
+
+  .planning-toolbar-group > * {
+    flex: 1 1 auto;
+  }
+
+  .planning-layout {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .planning-header-technicians,
+  .planning-grid {
+    grid-template-columns: repeat(var(--planning-columns, 1), minmax(160px, 160px));
+    gap: 8px;
+  }
+
+  .planning-column {
+    border-radius: 14px;
+  }
+
+  .job-block {
+    left: 6px;
+    right: 6px;
   }
 }

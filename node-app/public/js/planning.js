@@ -24,30 +24,51 @@
     fr: "fr-BE",
     ru: "ru-RU",
   };
+
   const copy = {
     nl: {
       allTechnicians: "Alle techniekers",
       allRegions: "Alle regio's",
       dayView: "Dagoverzicht",
       weekView: "Weekoverzicht",
+      weekPending: "Weekweergave wordt binnenkort verder uitgebreid.",
+      weekJobs: "jobs deze week",
+      techBusy: "bezet",
+      techAvailable: "vrij",
+      unassigned: "Niet toegewezen",
     },
     en: {
       allTechnicians: "All technicians",
       allRegions: "All regions",
       dayView: "Day view",
       weekView: "Week overview",
+      weekPending: "Week view will be expanded soon.",
+      weekJobs: "jobs this week",
+      techBusy: "busy",
+      techAvailable: "free",
+      unassigned: "Unassigned",
     },
     fr: {
       allTechnicians: "Tous les techniciens",
-      allRegions: "Toutes les régions",
+      allRegions: "Toutes les regions",
       dayView: "Vue jour",
       weekView: "Vue semaine",
+      weekPending: "La vue semaine sera bientot plus detaillee.",
+      weekJobs: "jobs cette semaine",
+      techBusy: "occupe",
+      techAvailable: "libre",
+      unassigned: "Non assigne",
     },
     ru: {
-      allTechnicians: "Все техники",
-      allRegions: "Все регионы",
-      dayView: "День",
-      weekView: "Неделя",
+      allTechnicians: "\u0412\u0441\u0435 \u0442\u0435\u0445\u043d\u0438\u043a\u0438",
+      allRegions: "\u0412\u0441\u0435 \u0440\u0435\u0433\u0438\u043e\u043d\u044b",
+      dayView: "\u0414\u0435\u043d\u044c",
+      weekView: "\u041d\u0435\u0434\u0435\u043b\u044f",
+      weekPending: "\u041d\u0435\u0434\u0435\u043b\u044c\u043d\u044b\u0439 \u0432\u0438\u0434 \u0441\u043a\u043e\u0440\u043e \u0441\u0442\u0430\u043d\u0435\u0442 \u043f\u043e\u0434\u0440\u043e\u0431\u043d\u0435\u0435.",
+      weekJobs: "\u0437\u0430\u0434\u0430\u0447 \u0437\u0430 \u043d\u0435\u0434\u0435\u043b\u044e",
+      techBusy: "\u0437\u0430\u043d\u044f\u0442",
+      techAvailable: "\u0441\u0432\u043e\u0431\u043e\u0434\u0435\u043d",
+      unassigned: "\u0411\u0435\u0437 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f",
     },
   };
 
@@ -134,29 +155,45 @@
   function renderHeaders(technicians) {
     const header = document.getElementById("planningHeaderTechnicians");
     header.style.setProperty("--planning-columns", String(Math.max(technicians.length, 1)));
+    const jobs = visibleJobs();
     header.innerHTML = technicians
-      .map(
-        (tech) => `
+      .map((tech) => {
+        const techJobs = jobs.filter((job) => String(job.technician_id) === String(tech.id));
+        const busyRatio = Math.min(techJobs.length / 4, 1);
+        const statusLabel =
+          tech.status === "busy"
+            ? t("techBusy")
+            : tech.status === "available"
+              ? t("techAvailable")
+              : tech.status;
+
+        return `
           <div class="planning-tech-header">
-            <strong>${tech.name}</strong>
-            <span class="muted">${tech.status} · ${tech.region}</span>
+            <div class="planning-tech-header-top">
+              <strong>${tech.name}</strong>
+              <span class="planning-tech-count">${techJobs.length}</span>
+            </div>
+            <div class="planning-tech-progress">
+              <span style="width:${busyRatio * 100}%"></span>
+            </div>
+            <span class="muted">${statusLabel} - ${tech.region}</span>
           </div>
-        `
-      )
+        `;
+      })
       .join("");
   }
 
   function renderWeekPlaceholder(weekPayload) {
     const totals = weekPayload?.totals || [];
     return `
-      <p class="muted">${weekPayload?.message || "Week view volgt later."}</p>
+      <p class="muted">${weekPayload?.message || t("weekPending")}</p>
       <div class="week-summary">
         ${totals
           .map(
             (item) => `
               <div class="week-card">
                 <strong>${item.name}</strong>
-                <p>${item.jobs} jobs deze week</p>
+                <p>${item.jobs} ${t("weekJobs")}</p>
               </div>
             `
           )
@@ -223,9 +260,10 @@
           block.style.height = `${slotHeight(job.start, job.end)}px`;
           block.dataset.jobId = job.id;
           block.innerHTML = `
-            <strong>#${job.id} · ${job.client}</strong>
-            <small>${formatTime(job.start)} - ${formatTime(job.end)}</small>
-            <small>${job.city}</small>
+            <span class="job-block-accent"></span>
+            <strong>#${job.id} - ${job.client}</strong>
+            <small>${job.title}</small>
+            <small>${formatTime(job.start)} - ${formatTime(job.end)} - ${job.city || t("unassigned")}</small>
           `;
           block.addEventListener("click", () => {
             if (typeof window.loadJobDetail === "function") {

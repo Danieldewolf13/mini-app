@@ -12,8 +12,8 @@
       <% appointments.slice(0, 5).forEach((appt) => { %>
         <button class="appointment-card" type="button" data-job-id="<%= appt.id %>">
           <strong><%= appt.scheduled_at_label %></strong>
-          <p>#<%= appt.id %> · <%= appt.client_name || "-" %></p>
-          <p class="muted"><%= appt.technician_name || "Unassigned" %> · <%= appt.afspraak_type_label || "-" %></p>
+          <p>#<%= appt.id %> - <%= appt.client_name || "-" %></p>
+          <p class="muted"><%= appt.technician_name || "Unassigned" %> - <%= appt.afspraak_type_label || "-" %></p>
         </button>
       <% }) %>
     <% } else { %>
