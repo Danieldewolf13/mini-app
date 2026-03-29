@@ -1,0 +1,13 @@
+<%
+const body = `
+<section class="panel placeholder-page">
+  <div class="section-head">
+    <div>
+      <p class="section-kicker">Module</p>
+      <h2>${title}</h2>
+    </div>
+  </div>
+  <p class="placeholder-copy">${description}</p>
+</section>
+`; %>
+<%- include("../layout/base", { ...locals, body }) %>

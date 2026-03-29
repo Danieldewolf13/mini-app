@@ -1,10 +1,5 @@
-const jobs = window.MINI_APP_DATA?.jobs || [];
-
-const searchInput = document.querySelector("#job-search");
-const statusFilter = document.querySelector("#status-filter");
-const categoryFilter = document.querySelector("#category-filter");
-const visibleCount = document.querySelector("#visible-count");
-const jobCards = Array.from(document.querySelectorAll(".job-card"));
+const dashboardData = window.MINI_APP_DATA || {};
+const jobs = dashboardData.jobs || [];
 
 let map;
 let focusMarker;
@@ -13,30 +8,72 @@ function normalize(value) {
   return String(value || "").toLowerCase().trim();
 }
 
-function applyFilters() {
-  const query = normalize(searchInput?.value);
+function syncSearchInputs(value) {
+  const localSearch = document.querySelector("#job-search");
+  const globalSearch = document.querySelector("#global-search");
+
+  if (localSearch && localSearch !== document.activeElement) {
+    localSearch.value = value;
+  }
+  if (globalSearch && globalSearch !== document.activeElement) {
+    globalSearch.value = value;
+  }
+}
+
+function filterJobCards() {
+  const localSearch = document.querySelector("#job-search");
+  const globalSearch = document.querySelector("#global-search");
+  const statusFilter = document.querySelector("#status-filter");
+  const technicianFilter = document.querySelector("#technician-filter");
+  const dateFilter = document.querySelector("#date-filter");
+  const visibleCount = document.querySelector(".section-meta");
+  const cards = Array.from(document.querySelectorAll(".job-card"));
+
+  if (!cards.length) {
+    return;
+  }
+
+  const query = normalize(localSearch?.value || globalSearch?.value);
   const selectedStatus = normalize(statusFilter?.value);
-  const selectedCategory = normalize(categoryFilter?.value);
+  const selectedTechnician = normalize(technicianFilter?.value);
+  const selectedDate = normalize(dateFilter?.value);
 
   let visible = 0;
+  const now = new Date();
 
-  jobCards.forEach((card) => {
+  cards.forEach((card) => {
     const matchesQuery = !query || normalize(card.dataset.search).includes(query);
     const matchesStatus = !selectedStatus || normalize(card.dataset.status) === selectedStatus;
-    const matchesCategory = !selectedCategory || normalize(card.dataset.category) === selectedCategory;
-    const show = matchesQuery && matchesStatus && matchesCategory;
+    const matchesTechnician = !selectedTechnician || normalize(card.dataset.technician) === selectedTechnician;
+
+    let matchesDate = true;
+    if (selectedDate) {
+      const job = jobs.find((entry) => String(entry.id) === String(card.dataset.id));
+      const createdAt = job?.created_at ? new Date(job.created_at) : null;
+
+      if (createdAt && !Number.isNaN(createdAt.getTime())) {
+        const sameDay = createdAt.toDateString() === now.toDateString();
+        matchesDate = selectedDate === "today" ? sameDay : !sameDay;
+      }
+    }
+
+    const show = matchesQuery && matchesStatus && matchesTechnician && matchesDate;
     card.classList.toggle("hidden", !show);
-    if (show) visible += 1;
+    if (show) {
+      visible += 1;
+    }
   });
 
   if (visibleCount) {
-    visibleCount.textContent = `${visible} jobs zichtbaar`;
+    visibleCount.textContent = `${visible} zichtbaar`;
   }
 }
 
 async function geocodeAddress(address) {
   const query = String(address || "").trim();
-  if (!query) return null;
+  if (!query) {
+    return null;
+  }
 
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", query);
@@ -44,13 +81,17 @@ async function geocodeAddress(address) {
   url.searchParams.set("limit", "1");
 
   const response = await fetch(url.toString(), {
-    headers: {
-      "Accept": "application/json",
-    },
+    headers: { Accept: "application/json" },
   });
-  if (!response.ok) return null;
+
+  if (!response.ok) {
+    return null;
+  }
+
   const data = await response.json();
-  if (!Array.isArray(data) || !data.length) return null;
+  if (!Array.isArray(data) || !data.length) {
+    return null;
+  }
 
   return {
     lat: Number(data[0].lat),
@@ -61,7 +102,9 @@ async function geocodeAddress(address) {
 
 function initMap() {
   const mapNode = document.querySelector("#map");
-  if (!mapNode || typeof L === "undefined") return;
+  if (!mapNode || typeof L === "undefined") {
+    return;
+  }
 
   map = L.map(mapNode, {
     zoomControl: true,
@@ -74,12 +117,16 @@ function initMap() {
 }
 
 async function focusAddress(address) {
-  if (!map || !address) return;
+  if (!map || !address) {
+    return;
+  }
+
   const result = await geocodeAddress(address);
-  if (!result) return;
+  if (!result) {
+    return;
+  }
 
   map.setView([result.lat, result.lon], 13);
-
   if (focusMarker) {
     focusMarker.remove();
   }
@@ -87,18 +134,48 @@ async function focusAddress(address) {
   focusMarker.bindPopup(result.label).openPopup();
 }
 
-function bindActions() {
-  if (searchInput) searchInput.addEventListener("input", applyFilters);
-  if (statusFilter) statusFilter.addEventListener("change", applyFilters);
-  if (categoryFilter) categoryFilter.addEventListener("change", applyFilters);
+function bindSearch() {
+  const localSearch = document.querySelector("#job-search");
+  const globalSearch = document.querySelector("#global-search");
+  const statusFilter = document.querySelector("#status-filter");
+  const technicianFilter = document.querySelector("#technician-filter");
+  const dateFilter = document.querySelector("#date-filter");
 
-  document.querySelectorAll("[data-focus-address]").forEach((button) => {
-    button.addEventListener("click", () => {
-      focusAddress(button.dataset.focusAddress);
+  if (localSearch) {
+    localSearch.addEventListener("input", () => {
+      syncSearchInputs(localSearch.value);
+      filterJobCards();
     });
+  }
+
+  if (globalSearch) {
+    globalSearch.addEventListener("input", () => {
+      syncSearchInputs(globalSearch.value);
+      filterJobCards();
+    });
+  }
+
+  [statusFilter, technicianFilter, dateFilter].forEach((node) => {
+    if (node) {
+      node.addEventListener("change", filterJobCards);
+    }
   });
 }
 
+document.addEventListener("click", (event) => {
+  const focusButton = event.target.closest("[data-address-focus]");
+  if (focusButton) {
+    focusAddress(focusButton.dataset.addressFocus);
+    return;
+  }
+
+  const card = event.target.closest(".job-card");
+  if (card && typeof window.loadJobDetail === "function") {
+    window.loadJobDetail(card.dataset.id);
+  }
+});
+
 initMap();
-bindActions();
-applyFilters();
+bindSearch();
+filterJobCards();
+window.focusAddress = focusAddress;

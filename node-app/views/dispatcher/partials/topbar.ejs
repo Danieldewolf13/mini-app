@@ -1,0 +1,19 @@
+<div class="topbar-inner">
+  <div class="topbar-copy">
+    <p class="topbar-kicker">Dispatcher</p>
+    <h1><%= pageTitle %></h1>
+  </div>
+
+  <div class="topbar-tools">
+    <input class="search" id="global-search" placeholder="Search jobs..." />
+    <div class="actions">
+      <% actions.forEach((action) => { %>
+        <a
+          href="<%= action.href %>"
+          class="topbar-button <%= action.variant === 'primary' ? 'is-primary' : '' %>"
+          <%= action.external ? 'target="_blank" rel="noreferrer"' : '' %>
+        ><%= action.label %></a>
+      <% }) %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,19 @@
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <p class="section-kicker">Jobs</p>
+      <h2>Active jobs</h2>
+    </div>
+    <a class="section-link" href="/dispatcher/jobs">View all</a>
+  </div>
+
+  <div class="jobs-list">
+    <% if (jobs.length) { %>
+      <% jobs.slice(0, 12).forEach((job) => { %>
+        <%- include("job_card", { job }) %>
+      <% }) %>
+    <% } else { %>
+      <p class="empty-state">Nog geen actieve jobs gevonden.</p>
+    <% } %>
+  </div>
+</section>

@@ -1,0 +1,36 @@
+<section class="panel queue">
+  <div class="section-head">
+    <div>
+      <p class="section-kicker">Queue</p>
+      <h2>Needs attention</h2>
+    </div>
+  </div>
+
+  <div class="queue-block">
+    <h3>Unassigned</h3>
+    <% if (queue.unassigned.length) { %>
+      <% queue.unassigned.forEach((job) => { %>
+        <div class="job-row">
+          <span>#<%= job.id %></span>
+          <span><%= job.city || "-" %></span>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p class="empty-state">Geen open unassigned jobs.</p>
+    <% } %>
+  </div>
+
+  <div class="queue-block">
+    <h3>Overdue</h3>
+    <% if (queue.overdue.length) { %>
+      <% queue.overdue.forEach((job) => { %>
+        <div class="job-row danger">
+          <span>#<%= job.id %></span>
+          <span><%= job.city || "-" %></span>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p class="empty-state">Geen overdue jobs.</p>
+    <% } %>
+  </div>
+</section>

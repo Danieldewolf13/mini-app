@@ -1,0 +1,20 @@
+<div
+  class="job-card"
+  data-id="<%= job.id %>"
+  data-status="<%= job.status %>"
+  data-technician="<%= job.technician || '' %>"
+  data-search="<%= `${job.client || ''} ${job.address_raw || ''} ${job.city || ''} ${job.technician || ''} ${job.detail_text || ''}` %>"
+  data-address="<%= job.address_raw || '' %>"
+>
+  <div class="job-card-head">
+    <div>
+      <strong>#<%= job.id %></strong>
+      <p><%= job.client %></p>
+    </div>
+    <span class="status-pill"><%= job.status_label %></span>
+  </div>
+  <div class="job-card-body">
+    <span><%= job.city || "-" %></span>
+    <span><%= job.technician || "Unassigned" %></span>
+  </div>
+</div>

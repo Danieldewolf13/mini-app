@@ -1,0 +1,19 @@
+<%
+const body = `
+<div class="jobs-page">
+  ${include("./partials/jobs_filters")}
+  <section class="panel jobs-table-panel">
+    <div class="section-head">
+      <div>
+        <p class="section-kicker">Jobs</p>
+        <h2>Dispatcher jobs</h2>
+      </div>
+      <span class="section-meta">${jobs.length} zichtbaar</span>
+    </div>
+    <div id="jobsTable" class="jobs-list">
+      ${jobs.length ? jobs.map((job) => include("./partials/job_card", { job })).join("") : `<p class="empty-state">Nog geen jobs gevonden in deze mini-app database.</p>`}
+    </div>
+  </section>
+</div>
+`; %>
+<%- include("../layout/base", { ...locals, body, rightPanel: "dispatcher/partials/job_detail_panel" }) %>

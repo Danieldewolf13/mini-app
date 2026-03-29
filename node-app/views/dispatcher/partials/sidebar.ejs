@@ -1,0 +1,12 @@
+<div class="brand-block">
+  <a class="brand-logo" href="/dispatcher/dashboard">
+    <img src="/static/slotenmaker-daniel-logo.png" alt="Slotenmaker Daniel logo">
+  </a>
+  <p class="brand-caption">Daniel Operations</p>
+</div>
+
+<nav class="nav">
+  <% navigation.forEach((item) => { %>
+    <a href="<%= item.href %>" class="nav-link <%= activeNav === item.key ? "is-active" : "" %>"><%= item.label %></a>
+  <% }) %>
+</nav>

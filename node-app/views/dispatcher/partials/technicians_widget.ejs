@@ -1,0 +1,22 @@
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <p class="section-kicker">Crew</p>
+      <h2>Technicians</h2>
+    </div>
+  </div>
+
+  <div class="tech-list">
+    <% if (technicians.length) { %>
+      <% technicians.forEach((tech) => { %>
+        <div class="tech-card <%= Number(tech.active_jobs) === 0 ? 'free' : 'busy' %>">
+          <div><%= tech.full_name %></div>
+          <div><%= Number(tech.active_jobs) === 0 ? "Free" : `${tech.active_jobs} active` %></div>
+          <div><%= tech.tech_key || tech.role %></div>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p class="empty-state">Nog geen techniekers gevonden.</p>
+    <% } %>
+  </div>
+</section>

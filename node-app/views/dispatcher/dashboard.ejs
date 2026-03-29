@@ -1,0 +1,31 @@
+<%
+const body = `
+<div class="dashboard-page">
+  ${include("./partials/dashboard_kpis")}
+
+  <div class="dashboard-grid">
+    <div class="col-left">
+      ${include("./partials/action_queue")}
+    </div>
+
+    <div class="col-center">
+      ${include("./partials/active_jobs_list")}
+      <section class="panel map-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Map</p>
+            <h2>Mini map</h2>
+          </div>
+        </div>
+        ${include("./partials/mini_map")}
+      </section>
+    </div>
+
+    <div class="col-right">
+      ${include("./partials/technicians_widget")}
+      ${include("./partials/appointments_widget")}
+    </div>
+  </div>
+</div>
+`; %>
+<%- include("../layout/base", { ...locals, body }) %>
