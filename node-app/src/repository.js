@@ -122,6 +122,30 @@ async function fetchAppointmentsByJobId(id) {
   return query(sql);
 }
 
+async function updateJobStatus(jobId, status) {
+  await query(
+    `
+      UPDATE cards
+      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [String(status || "").trim(), Number(jobId)]
+  );
+}
+
+async function assignJobTechnician(jobId, technicianId) {
+  await query(
+    `
+      UPDATE cards
+      SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [technicianId ? Number(technicianId) : null, Number(jobId)]
+  );
+}
+
 async function fetchTechnicianSummary() {
   const sql = `
     SELECT
@@ -452,9 +476,26 @@ async function buildJobDetailPayload(id) {
     amount_excl_vat: job.amount_excl_vat_label,
     receiver: job.payment_receiver_kind,
   };
+  const assignmentOptions = (await fetchPlanningTechnicians()).map((technician) => ({
+    value: technician.tg_id,
+    label: `${technician.full_name} · ${technician.tech_key || "-"}`,
+  }));
+  const statusOptions = [
+    { value: "new", label: formatStatus("new") },
+    { value: "waiting_dispatcher", label: formatStatus("waiting_dispatcher") },
+    { value: "assigned", label: formatStatus("assigned") },
+    { value: "on_the_way", label: formatStatus("on_the_way") },
+    { value: "in_progress", label: formatStatus("in_progress") },
+    { value: "completed", label: formatStatus("completed") },
+    { value: "cancelled", label: formatStatus("cancelled") },
+  ];
   const actions = {
     assign_label: job.technician ? "Reassign technician" : "Assign technician",
     status_label: `Update status · ${job.status_label}`,
+    status_value: job.status,
+    status_options: statusOptions,
+    technician_value: job.technician_id,
+    assignment_options: assignmentOptions,
   };
 
   return {
@@ -486,6 +527,7 @@ async function buildJobDetailPayload(id) {
 }
 
 module.exports = {
+  assignJobTechnician,
   buildDashboardPayload,
   buildJobsPayload,
   buildJobDetailPayload,
@@ -493,4 +535,5 @@ module.exports = {
   fetchUserByTechKey,
   fetchPlanningJobs,
   fetchPlanningTechnicians,
+  updateJobStatus,
 };

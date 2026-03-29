@@ -961,6 +961,39 @@ select {
   gap: 10px;
 }
 
+.detail-actions-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.detail-inline-form {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.detail-inline-form label {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  flex: 1 1 240px;
+}
+
+.detail-inline-form span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.detail-inline-form select {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
 .detail-actions button {
   min-height: 40px;
   padding: 0 12px;
@@ -1114,6 +1147,11 @@ select {
   }
 
   .users-actions form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .detail-inline-form {
     flex-direction: column;
     align-items: stretch;
   }

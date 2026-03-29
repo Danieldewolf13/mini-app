@@ -1,7 +1,14 @@
 const express = require("express");
 const path = require("path");
 const { settings } = require("./config");
-const { buildDashboardPayload, buildJobsPayload, buildJobDetailPayload, fetchPlanningTechnicians } = require("./repository");
+const {
+  assignJobTechnician,
+  buildDashboardPayload,
+  buildJobsPayload,
+  buildJobDetailPayload,
+  fetchPlanningTechnicians,
+  updateJobStatus,
+} = require("./repository");
 const { getPlanningData } = require("./services/planningService");
 const {
   adminCreateUser,
@@ -41,6 +48,7 @@ const navigation = [
 
 app.set("view engine", "ejs");
 app.set("views", viewsDir);
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use("/static", express.static(staticDir));
 app.use(withAuth);
@@ -297,8 +305,34 @@ function scopeJobDetailPayload(payload, user) {
       assign_label: canAssignJob ? payload.actions?.assign_label || "Assign technician" : null,
       status_label:
         user?.role === "technician" ? "Update eigen status" : payload.actions?.status_label || "Change status",
+      status_value: payload.actions?.status_value,
+      status_options: (payload.actions?.status_options || []).filter((option) =>
+        getAllowedStatusValues(user).includes(option.value)
+      ),
+      technician_value: payload.actions?.technician_value ?? null,
+      assignment_options: canAssignJob ? payload.actions?.assignment_options || [] : [],
     },
   };
+}
+
+function canUpdateStatus(user, payload) {
+  if (!user || !payload) {
+    return false;
+  }
+
+  if (user.role === "admin" || user.role === "dispatcher") {
+    return true;
+  }
+
+  return user.role === "technician" && Number(payload.technician_id) === Number(user.tg_id);
+}
+
+function getAllowedStatusValues(user) {
+  if (user?.role === "technician") {
+    return ["assigned", "on_the_way", "in_progress", "completed"];
+  }
+
+  return ["new", "waiting_dispatcher", "assigned", "on_the_way", "in_progress", "completed", "cancelled"];
 }
 
 function baseViewModel({
@@ -695,6 +729,54 @@ app.get("/api/jobs/:id", requireAuthApi, async (req, res) => {
     return;
   }
   res.json(payload);
+});
+
+app.post("/api/jobs/:id/status", requireAuthApi, async (req, res) => {
+  const payload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
+  if (!payload) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  if (!canUpdateStatus(req.authUser, payload)) {
+    res.status(403).json({ error: "Geen toegang om status te wijzigen" });
+    return;
+  }
+
+  const nextStatus = String(req.body.status || "").trim();
+  if (!getAllowedStatusValues(req.authUser).includes(nextStatus)) {
+    res.status(400).json({ error: "Ongeldige status" });
+    return;
+  }
+
+  await updateJobStatus(req.params.id, nextStatus);
+  const updatedPayload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
+  res.json({ ok: true, job: updatedPayload });
+});
+
+app.post("/api/jobs/:id/assign", requireAuthApi, async (req, res) => {
+  const payload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
+  if (!payload) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  if (!canAssign(req.authUser)) {
+    res.status(403).json({ error: "Geen toegang om techniekers toe te wijzen" });
+    return;
+  }
+
+  const rawTechnicianId = String(req.body.technician_id || "").trim();
+  const nextTechnicianId = rawTechnicianId ? Number(rawTechnicianId) : null;
+
+  if (rawTechnicianId && !payload.actions?.assignment_options?.some((option) => Number(option.value) === nextTechnicianId)) {
+    res.status(400).json({ error: "Onbekende technieker" });
+    return;
+  }
+
+  await assignJobTechnician(req.params.id, nextTechnicianId);
+  const updatedPayload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
+  res.json({ ok: true, job: updatedPayload });
 });
 
 app.get("/health", (req, res) => {
