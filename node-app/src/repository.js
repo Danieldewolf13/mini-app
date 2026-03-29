@@ -140,6 +140,51 @@ async function fetchTechnicianSummary() {
   return query(sql);
 }
 
+async function fetchPlanningTechnicians() {
+  const sql = `
+    SELECT
+      u.tg_id,
+      u.full_name,
+      u.tech_key,
+      u.role
+    FROM users u
+    WHERE u.is_active = 1
+    ORDER BY u.full_name ASC
+  `;
+
+  return query(sql);
+}
+
+async function fetchPlanningJobs(startDate, endDate) {
+  const sql = `
+    SELECT
+      c.id AS job_id,
+      c.category,
+      c.problem_type,
+      c.work_type,
+      c.address_raw,
+      c.status,
+      c.created_at,
+      cl.client_name,
+      u.tg_id AS technician_id,
+      u.full_name AS technician_name,
+      u.role AS technician_status,
+      a.scheduled_at AS scheduled_start,
+      DATE_ADD(a.scheduled_at, INTERVAL 60 MINUTE) AS scheduled_end
+    FROM afspraak a
+    INNER JOIN cards c ON c.id = a.card_id
+    LEFT JOIN clients cl ON cl.id = c.client_id
+    LEFT JOIN users u ON u.tg_id = c.assigned_to
+    WHERE a.status = 'scheduled'
+      AND a.scheduled_at >= '${startDate} 00:00:00'
+      AND a.scheduled_at < DATE_ADD('${endDate} 00:00:00', INTERVAL 1 DAY)
+      AND c.status NOT IN ('completed', 'cancelled')
+    ORDER BY a.scheduled_at ASC, c.id ASC
+  `;
+
+  return query(sql);
+}
+
 function formatAmount(value) {
   if (value === null || value === undefined) {
     return "-";
@@ -363,4 +408,6 @@ module.exports = {
   buildDashboardPayload,
   buildJobsPayload,
   buildJobDetailPayload,
+  fetchPlanningJobs,
+  fetchPlanningTechnicians,
 };

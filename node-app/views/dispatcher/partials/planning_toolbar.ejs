@@ -1,0 +1,24 @@
+<section class="panel planning-toolbar">
+  <div class="planning-toolbar-group">
+    <button class="toolbar-btn" id="planningTodayBtn" type="button">Today</button>
+    <button class="toolbar-btn" id="planningPrevBtn" type="button">Prev</button>
+    <button class="toolbar-btn" id="planningNextBtn" type="button">Next</button>
+  </div>
+
+  <div class="planning-toolbar-group">
+    <input id="planningDate" type="date" value="<%= planning_date %>">
+    <div class="view-switch">
+      <button class="toolbar-btn is-active" data-view-switch="day" type="button">Day</button>
+      <button class="toolbar-btn" data-view-switch="week" type="button">Week</button>
+    </div>
+  </div>
+
+  <div class="planning-toolbar-group">
+    <select id="planningTechnicianFilter">
+      <option value="">All technicians</option>
+    </select>
+    <select id="planningRegionFilter">
+      <option value="">All regions</option>
+    </select>
+  </div>
+</section>

@@ -1,0 +1,8 @@
+<%
+const body = `
+<div class="planning-page">
+  ${include("./partials/planning_toolbar")}
+  ${include("./partials/planning_grid")}
+</div>
+`; %>
+<%- include("../layout/base", { ...locals, body }) %>

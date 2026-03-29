@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/planning.css') }}?v=planning-1">
+{% endblock %}
+
+{% block content %}
+<div class="planning-page">
+    <section class="panel planning-toolbar">
+        <div class="planning-toolbar-group">
+            <button class="toolbar-btn" id="planningTodayBtn" type="button">Today</button>
+            <button class="toolbar-btn" id="planningPrevBtn" type="button">Prev</button>
+            <button class="toolbar-btn" id="planningNextBtn" type="button">Next</button>
+        </div>
+
+        <div class="planning-toolbar-group">
+            <input id="planningDate" type="date" value="{{ planning_date }}">
+            <div class="view-switch">
+                <button class="toolbar-btn is-active" data-view-switch="day" type="button">Day</button>
+                <button class="toolbar-btn" data-view-switch="week" type="button">Week</button>
+            </div>
+        </div>
+
+        <div class="planning-toolbar-group">
+            <select id="planningTechnicianFilter">
+                <option value="">All technicians</option>
+            </select>
+            <select id="planningRegionFilter">
+                <option value="">All regions</option>
+            </select>
+        </div>
+    </section>
+
+    <section class="panel planning-board">
+        <div class="section-head">
+            <div>
+                <p class="section-kicker">Planning</p>
+                <h2>Dispatcher screen</h2>
+            </div>
+            <span class="section-meta" id="planningViewLabel">Day view</span>
+        </div>
+
+        <div id="planningWeekPlaceholder" class="planning-week-placeholder hidden"></div>
+
+        <div id="planningDayView" class="planning-day-view">
+            <div class="planning-layout">
+                <div id="planningTimeSidebar" class="planning-time-sidebar"></div>
+                <div class="planning-main">
+                    <div id="planningHeaderTechnicians" class="planning-header-technicians"></div>
+                    <div id="planningGrid" class="planning-grid"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="job-detail hidden" id="jobDetail">
+        <div class="detail-header">
+            <div>
+                <p class="section-kicker">Job detail</p>
+                <h2 id="jobDetailTitle">Select a job</h2>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Overview</h3>
+            <div id="jobOverview" class="detail-stack">
+                <p class="muted">Kies een job om details te tonen.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Actions</h3>
+            <div class="detail-actions">
+                <button id="assignBtn" type="button">Assign</button>
+                <button id="statusBtn" type="button">Change status</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Documents</h3>
+            <div id="jobDocs" class="detail-stack">
+                <p class="muted">Nog geen documenten gekoppeld.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Finance</h3>
+            <div id="jobFinance" class="detail-stack">
+                <p class="muted">Nog geen job geselecteerd.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', path='js/planning.js') }}?v=planning-1"></script>
+{% endblock %}

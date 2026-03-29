@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const { settings } = require("./config");
 const { buildDashboardPayload, buildJobsPayload, buildJobDetailPayload } = require("./repository");
+const { getPlanningData } = require("./services/planningService");
 
 const app = express();
 const staticDir = path.resolve(__dirname, "../public");
@@ -80,6 +81,8 @@ function baseViewModel({
   actions = [],
   contentClass = "",
   rightPanel = null,
+  extraStyles = [],
+  extraScripts = [],
   ...payload
 }) {
   return {
@@ -92,6 +95,8 @@ function baseViewModel({
     contentClass,
     rightPanel,
     actions,
+    extraStyles,
+    extraScripts,
     serialize: (value) => JSON.stringify(value ?? []),
     ...payload,
   };
@@ -152,7 +157,20 @@ app.get("/dispatcher/jobs", async (req, res) => {
 });
 
 app.get("/dispatcher/planning", (req, res) => {
-  renderPlaceholder(res, "planning", "Planning", "Dag- en weekplanning volgen hier op de opgeschoonde dispatcherbasis.");
+  const today = new Date().toISOString().slice(0, 10);
+  res.render(
+    "dispatcher/planning",
+    baseViewModel({
+      pageTitle: "Planning",
+      activeNav: "planning",
+      rightPanel: "dispatcher/partials/job_detail_panel",
+      extraStyles: ["/static/css/planning.css?v=planning-1"],
+      extraScripts: ["/static/js/planning.js?v=planning-1"],
+      planning_date: today,
+      planning_view: "day",
+      actions: [],
+    })
+  );
 });
 
 app.get("/dispatcher/calendar", (req, res) => {
@@ -174,6 +192,21 @@ app.get("/dispatcher/finance", (req, res) => {
 app.get("/api/dashboard", async (req, res) => {
   const payload = await loadDashboardPayload();
   res.status(payload.db_error ? 503 : 200).json(payload);
+});
+
+app.get("/api/planning", async (req, res) => {
+  try {
+    const payload = await getPlanningData(req.query.date, req.query.view);
+    res.json(payload);
+  } catch (error) {
+    res.status(503).json({
+      date: req.query.date || "",
+      view: req.query.view || "day",
+      technicians: [],
+      jobs: [],
+      error: error.message || String(error),
+    });
+  }
 });
 
 app.get("/api/jobs", async (req, res) => {

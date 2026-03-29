@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}?v=invoice-3">
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <div class="shell">
@@ -20,9 +21,12 @@
             jobs: {{ jobs | tojson }},
             appointments: {{ appointments | tojson }},
             technicians: {{ technicians | tojson }},
+            planningDate: {{ planning_date | default('', true) | tojson }},
+            planningView: {{ planning_view | default('day', true) | tojson }},
             billitBaseUrl: {{ billit_base_url | tojson }}
         };
     </script>
     <script src="{{ url_for('static', path='app.js') }}?v=invoice-3"></script>
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

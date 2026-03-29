@@ -1,0 +1,189 @@
+.planning-page {
+    display: grid;
+    gap: 16px;
+}
+
+.planning-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.planning-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.toolbar-btn,
+.planning-toolbar input,
+.planning-toolbar select {
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--text);
+}
+
+.toolbar-btn.is-active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #ffffff;
+}
+
+.planning-board {
+    overflow: hidden;
+}
+
+.planning-layout {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 12px;
+}
+
+.planning-header-technicians {
+    display: grid;
+    grid-template-columns: repeat(var(--planning-columns, 1), minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.planning-tech-header {
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel-soft);
+}
+
+.planning-tech-header strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.planning-time-sidebar {
+    display: grid;
+    grid-auto-rows: 44px;
+    padding-top: 54px;
+}
+
+.planning-time-slot {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.planning-main {
+    min-width: 0;
+}
+
+.planning-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--planning-columns, 1), minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.planning-column {
+    position: relative;
+    height: var(--planning-grid-height, 1056px);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.planning-slot {
+    height: 44px;
+    border-bottom: 1px solid rgba(41, 75, 143, 0.08);
+}
+
+.planning-slot:nth-child(2n) {
+    background: rgba(41, 75, 143, 0.02);
+}
+
+.job-block {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(24, 41, 73, 0.12);
+    border: none;
+}
+
+.job-block strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.job-block small {
+    display: block;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.job-block.status-assigned {
+    background: #3e6ad6;
+    color: #ffffff;
+}
+
+.job-block.status-in_progress {
+    background: #2ea95a;
+    color: #ffffff;
+}
+
+.job-block.status-completed,
+.job-block.status-done {
+    background: #5f6b7c;
+    color: #ffffff;
+}
+
+.job-block.status-unassigned,
+.job-block.status-waiting_dispatcher {
+    background: #d0a436;
+    color: #ffffff;
+}
+
+.job-block.status-on_the_way {
+    background: #7f56d9;
+    color: #ffffff;
+}
+
+.job-block.is-urgent {
+    outline: 2px solid #f7d673;
+}
+
+.job-block.is-overdue {
+    box-shadow: 0 0 0 2px rgba(199, 81, 81, 0.32);
+}
+
+.planning-week-placeholder {
+    display: grid;
+    gap: 12px;
+}
+
+.week-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.week-card {
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel-soft);
+}
+
+@media (max-width: 1000px) {
+    .planning-layout {
+        grid-template-columns: 56px minmax(0, 1fr);
+    }
+
+    .planning-header-technicians,
+    .planning-grid {
+        grid-template-columns: repeat(var(--planning-columns, 1), minmax(150px, 1fr));
+    }
+}
