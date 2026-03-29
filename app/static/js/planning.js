@@ -137,6 +137,25 @@
     `;
   }
 
+  function renderWeekPlaceholder(weekPayload) {
+    const totals = weekPayload?.totals || [];
+    return `
+      <p class="muted">${weekPayload?.message || "Week view is voorlopig een lichte placeholder. Day view is volledig ondersteund."}</p>
+      <div class="week-summary">
+        ${totals
+          .map(
+            (item) => `
+              <div class="week-card">
+                <strong>${item.name}</strong>
+                <p>${item.jobs} jobs deze week</p>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    `;
+  }
+
   function renderGrid() {
     const dayView = document.getElementById("planningDayView");
     const weekPlaceholder = document.getElementById("planningWeekPlaceholder");
@@ -151,7 +170,7 @@
     if (state.view === "week") {
       dayView.classList.add("hidden");
       weekPlaceholder.classList.remove("hidden");
-      weekPlaceholder.innerHTML = `<p class="muted">Week view is voorlopig een lichte placeholder. Day view is volledig ondersteund.</p>`;
+      weekPlaceholder.innerHTML = renderWeekPlaceholder(state.payload.week);
       return;
     }
 

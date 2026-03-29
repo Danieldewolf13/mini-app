@@ -133,6 +133,26 @@ def _build_technicians(rows: list[dict], jobs: list[dict]) -> list[dict]:
     return technicians
 
 
+def _build_week_overview(selected_date: str, technicians: list[dict], jobs: list[dict]) -> dict:
+    end_date = _add_days(selected_date, 6)
+    totals = []
+
+    for technician in technicians:
+        tech_id = str(technician.get("id"))
+        totals.append(
+            {
+                "technician_id": technician.get("id"),
+                "name": technician.get("name"),
+                "jobs": sum(1 for job in jobs if str(job.get("technician_id")) == tech_id),
+            }
+        )
+
+    return {
+        "message": f"Week view toont voorlopig een lichte overview van {selected_date} tot {end_date}.",
+        "totals": totals,
+    }
+
+
 def get_planning_data(date_input: str | None, view_input: str | None):
     selected_date = _normalize_date_input(date_input)
     selected_view = "week" if view_input == "week" else "day"
@@ -149,4 +169,5 @@ def get_planning_data(date_input: str | None, view_input: str | None):
         "view": selected_view,
         "technicians": technicians,
         "jobs": jobs,
+        "week": _build_week_overview(selected_date, technicians, jobs) if selected_view == "week" else None,
     }

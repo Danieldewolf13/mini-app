@@ -107,6 +107,25 @@
       .join("");
   }
 
+  function renderWeekPlaceholder(weekPayload) {
+    const totals = weekPayload?.totals || [];
+    return `
+      <p class="muted">${weekPayload?.message || "Week view volgt later."}</p>
+      <div class="week-summary">
+        ${totals
+          .map(
+            (item) => `
+              <div class="week-card">
+                <strong>${item.name}</strong>
+                <p>${item.jobs} jobs deze week</p>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    `;
+  }
+
   function renderGrid() {
     const dayView = document.getElementById("planningDayView");
     const weekPlaceholder = document.getElementById("planningWeekPlaceholder");
@@ -121,23 +140,7 @@
     if (state.view === "week") {
       dayView.classList.add("hidden");
       weekPlaceholder.classList.remove("hidden");
-
-      const totals = state.payload.week?.totals || [];
-      weekPlaceholder.innerHTML = `
-        <p class="muted">${state.payload.week?.message || "Week view volgt later."}</p>
-        <div class="week-summary">
-          ${totals
-            .map(
-              (item) => `
-                <div class="week-card">
-                  <strong>${item.name}</strong>
-                  <p>${item.jobs} jobs deze week</p>
-                </div>
-              `
-            )
-            .join("")}
-        </div>
-      `;
+      weekPlaceholder.innerHTML = renderWeekPlaceholder(state.payload.week);
       return;
     }
 
