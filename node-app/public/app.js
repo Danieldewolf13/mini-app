@@ -3,6 +3,8 @@ const jobs = dashboardData.jobs || [];
 
 let map;
 let focusMarker;
+const defaultMapView = { center: [50.85, 4.35], zoom: 8 };
+let mapInteractionEnabled = false;
 
 function setupSidebarToggle() {
   const toggle = document.getElementById("sidebarToggle");
@@ -145,12 +147,47 @@ function initMap() {
 
   map = L.map(mapNode, {
     zoomControl: true,
-  }).setView([50.85, 4.35], 8);
+    scrollWheelZoom: false,
+  }).setView(defaultMapView.center, defaultMapView.zoom);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap",
   }).addTo(map);
+}
+
+function setMapInteraction(enabled) {
+  const guard = document.getElementById("mapGuard");
+  const toggle = document.getElementById("mapInteractionToggle");
+
+  mapInteractionEnabled = enabled;
+
+  if (map) {
+    if (enabled) {
+      map.scrollWheelZoom.enable();
+      map.dragging.enable();
+      map.touchZoom.enable();
+      map.doubleClickZoom.enable();
+      map.boxZoom.enable();
+      map.keyboard.enable();
+    } else {
+      map.scrollWheelZoom.disable();
+      map.dragging.disable();
+      map.touchZoom.disable();
+      map.doubleClickZoom.disable();
+      map.boxZoom.disable();
+      map.keyboard.disable();
+    }
+  }
+
+  if (guard) {
+    guard.classList.toggle("hidden", enabled);
+  }
+
+  if (toggle) {
+    toggle.textContent = enabled ? "Vergrendel kaart" : "Activeer kaart";
+    toggle.setAttribute("aria-pressed", enabled ? "true" : "false");
+  }
 }
 
 async function focusAddress(address) {
@@ -163,12 +200,26 @@ async function focusAddress(address) {
     return;
   }
 
+  setMapInteraction(true);
   map.setView([result.lat, result.lon], 13);
   if (focusMarker) {
     focusMarker.remove();
   }
   focusMarker = L.marker([result.lat, result.lon]).addTo(map);
   focusMarker.bindPopup(result.label).openPopup();
+}
+
+function resetMapView() {
+  if (!map) {
+    return;
+  }
+
+  map.setView(defaultMapView.center, defaultMapView.zoom);
+  if (focusMarker) {
+    focusMarker.remove();
+    focusMarker = null;
+  }
+  setMapInteraction(false);
 }
 
 function bindSearch() {
@@ -199,6 +250,30 @@ function bindSearch() {
   });
 }
 
+function bindMapControls() {
+  const guard = document.getElementById("mapGuard");
+  const toggle = document.getElementById("mapInteractionToggle");
+  const reset = document.getElementById("mapResetButton");
+
+  if (guard) {
+    guard.addEventListener("click", () => {
+      setMapInteraction(true);
+    });
+  }
+
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      setMapInteraction(!mapInteractionEnabled);
+    });
+  }
+
+  if (reset) {
+    reset.addEventListener("click", () => {
+      resetMapView();
+    });
+  }
+}
+
 document.addEventListener("click", (event) => {
   const focusButton = event.target.closest("[data-address-focus]");
   if (focusButton) {
@@ -213,7 +288,9 @@ document.addEventListener("click", (event) => {
 });
 
 initMap();
+setMapInteraction(false);
 setupSidebarToggle();
 bindSearch();
+bindMapControls();
 filterJobCards();
 window.focusAddress = focusAddress;

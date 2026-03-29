@@ -545,6 +545,54 @@ select {
   overflow: hidden;
 }
 
+.mini-map-shell {
+  position: relative;
+}
+
+.map-toolbar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+}
+
+.map-toolbar-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--blue);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.map-guard {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(24, 41, 73, 0.08);
+}
+
+.map-guard-card {
+  display: grid;
+  gap: 6px;
+  max-width: 300px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
 .map-panel .section-head {
   margin-bottom: 12px;
 }
