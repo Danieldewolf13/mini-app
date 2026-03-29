@@ -9,7 +9,7 @@
   </div>
 
   <div class="topbar-tools">
-    <input class="search" id="global-search" placeholder="Search jobs..." />
+    <input class="search" id="global-search" placeholder="<%= t('topbar.search_jobs', 'Search jobs...') %>" />
     <% if (currentUser) { %>
       <div class="current-user-chip">
         <strong><%= currentUser.name %></strong>
@@ -26,7 +26,7 @@
       <% }) %>
       <% if (currentUser) { %>
         <form method="post" action="/logout" class="logout-form">
-          <button type="submit" class="topbar-button">Logout</button>
+          <button type="submit" class="topbar-button"><%= t('topbar.logout', 'Logout') %></button>
         </form>
       <% } %>
     </div>

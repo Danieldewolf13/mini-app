@@ -1,14 +1,14 @@
 <section class="panel queue queue-panel">
   <div class="section-head">
     <div>
-      <p class="section-kicker">Queue</p>
-      <h2>Needs attention</h2>
+      <p class="section-kicker"><%= t("dashboard.queue.kicker", "Queue") %></p>
+      <h2><%= t("dashboard.queue.title", "Needs attention") %></h2>
     </div>
   </div>
 
   <div class="queue-preview">
   <div class="queue-block">
-    <h3>Unassigned</h3>
+    <h3><%= t("dashboard.queue.unassigned", "Unassigned") %></h3>
     <% if (queue.unassigned.length) { %>
       <% queue.unassigned.slice(0, 4).forEach((job) => { %>
         <button class="job-row" type="button" data-job-id="<%= job.id %>">
@@ -25,7 +25,7 @@
   </div>
 
   <div class="queue-block">
-    <h3>Overdue</h3>
+    <h3><%= t("dashboard.queue.overdue", "Overdue") %></h3>
     <% if (queue.overdue.length) { %>
       <% queue.overdue.slice(0, 4).forEach((job) => { %>
         <button class="job-row danger" type="button" data-job-id="<%= job.id %>">
@@ -42,7 +42,7 @@
   </div>
 
   <div class="queue-block">
-    <h3>Waiting confirmation</h3>
+    <h3><%= t("dashboard.queue.waiting_confirmation", "Waiting confirmation") %></h3>
     <% if (queue.waiting_confirmation.length) { %>
       <% queue.waiting_confirmation.slice(0, 4).forEach((job) => { %>
         <button class="job-row warning" type="button" data-job-id="<%= job.id %>">
@@ -59,7 +59,7 @@
   </div>
 
   <div class="queue-block">
-    <h3>Missing documents</h3>
+    <h3><%= t("dashboard.queue.missing_documents", "Missing documents") %></h3>
     <% if (queue.missing_documents.length) { %>
       <% queue.missing_documents.slice(0, 4).forEach((job) => { %>
         <button class="job-row info" type="button" data-job-id="<%= job.id %>">

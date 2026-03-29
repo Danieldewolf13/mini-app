@@ -594,6 +594,7 @@ select {
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
+  max-height: 420px;
 }
 
 .jobs-panel .section-meta,
@@ -652,6 +653,7 @@ select {
 .job-row-side strong {
   font-family: "Barlow Condensed", sans-serif;
   font-size: 20px;
+  line-height: 1;
 }
 
 .job-row-side {
@@ -702,10 +704,17 @@ select {
 .job-card-body span {
   margin: 0;
   font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .job-card-body span:last-child {
   color: var(--muted);
+}
+
+.job-card-body {
+  min-width: 0;
 }
 
 .status-pill {
@@ -728,6 +737,14 @@ select {
 .tech-card,
 .appointment-card {
   padding: 12px 14px;
+}
+
+.tech-card div,
+.appointment-card p,
+.appointment-card strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .compact-list {
@@ -825,6 +842,30 @@ select {
   display: grid;
   grid-template-columns: minmax(360px, 0.95fr) minmax(300px, 0.7fr);
   gap: 12px;
+}
+
+.settings-grid {
+  align-items: start;
+}
+
+.settings-checkboxes {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-soft);
+}
+
+.settings-check input {
+  width: 18px;
+  height: 18px;
 }
 
 .users-form {

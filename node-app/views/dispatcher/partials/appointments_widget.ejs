@@ -1,10 +1,10 @@
 <section class="panel appointments-panel">
   <div class="section-head">
     <div>
-      <p class="section-kicker">Planning</p>
-      <h2>Upcoming</h2>
+      <p class="section-kicker"><%= t("dashboard.appointments.kicker", "Planning") %></p>
+      <h2><%= t("dashboard.appointments.title", "Upcoming") %></h2>
     </div>
-    <a class="section-link" href="/dispatcher/planning">View all</a>
+    <a class="section-link" href="/dispatcher/planning"><%= t("common.view_all", "View all") %></a>
   </div>
 
   <div class="appointment-list compact-list appointments-preview">

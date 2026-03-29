@@ -249,6 +249,10 @@ function canAccessNav(user, key) {
     return false;
   }
 
+  if (key === "settings") {
+    return true;
+  }
+
   if (user.role === "admin") {
     return true;
   }

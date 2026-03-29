@@ -77,12 +77,21 @@
 
 .planning-main {
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
 }
 
 .planning-grid {
   display: grid;
-  grid-template-columns: repeat(var(--planning-columns, 1), minmax(180px, 1fr));
+  grid-template-columns: repeat(var(--planning-columns, 1), minmax(220px, 220px));
   gap: 10px;
+  min-width: max-content;
+}
+
+.planning-header-technicians {
+  min-width: max-content;
+  grid-template-columns: repeat(var(--planning-columns, 1), minmax(220px, 220px));
 }
 
 .planning-column {
@@ -111,16 +120,24 @@
   border-radius: 14px;
   cursor: pointer;
   box-shadow: 0 8px 18px rgba(24, 41, 73, 0.12);
+  overflow: hidden;
+  text-align: left;
 }
 
 .job-block strong {
   display: block;
   margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .job-block small {
   display: block;
   color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .job-block.status-assigned {
@@ -184,6 +201,6 @@
 
   .planning-header-technicians,
   .planning-grid {
-    grid-template-columns: repeat(var(--planning-columns, 1), minmax(150px, 1fr));
+    grid-template-columns: repeat(var(--planning-columns, 1), minmax(180px, 180px));
   }
 }

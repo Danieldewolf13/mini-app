@@ -15,7 +15,46 @@
     payload: null,
     technicianFilter: "",
     regionFilter: "",
+    language: window.MINI_APP_DATA.currentLanguage || "nl",
   };
+
+  const localeByLanguage = {
+    nl: "nl-BE",
+    en: "en-GB",
+    fr: "fr-BE",
+    ru: "ru-RU",
+  };
+  const copy = {
+    nl: {
+      allTechnicians: "Alle techniekers",
+      allRegions: "Alle regio's",
+      dayView: "Dagoverzicht",
+      weekView: "Weekoverzicht",
+    },
+    en: {
+      allTechnicians: "All technicians",
+      allRegions: "All regions",
+      dayView: "Day view",
+      weekView: "Week overview",
+    },
+    fr: {
+      allTechnicians: "Tous les techniciens",
+      allRegions: "Toutes les régions",
+      dayView: "Vue jour",
+      weekView: "Vue semaine",
+    },
+    ru: {
+      allTechnicians: "Все техники",
+      allRegions: "Все регионы",
+      dayView: "День",
+      weekView: "Неделя",
+    },
+  };
+
+  function t(key) {
+    const language = state.language in copy ? state.language : "nl";
+    return copy[language][key] || copy.nl[key] || key;
+  }
 
   function minutesSinceStart(value) {
     const date = new Date(value);
@@ -35,7 +74,7 @@
 
   function formatTime(value) {
     const date = new Date(value);
-    return date.toLocaleTimeString("nl-BE", {
+    return date.toLocaleTimeString(localeByLanguage[state.language] || "nl-BE", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
@@ -66,12 +105,12 @@
     const technicians = state.payload?.technicians || [];
     const regions = [...new Set((state.payload?.jobs || []).map((job) => job.region).filter(Boolean))].sort();
 
-    technicianFilter.innerHTML = `<option value="">All technicians</option>${technicians
+    technicianFilter.innerHTML = `<option value="">${t("allTechnicians")}</option>${technicians
       .map((tech) => `<option value="${tech.id}">${tech.name}</option>`)
       .join("")}`;
     technicianFilter.value = state.technicianFilter;
 
-    regionFilter.innerHTML = `<option value="">All regions</option>${regions
+    regionFilter.innerHTML = `<option value="">${t("allRegions")}</option>${regions
       .map((region) => `<option value="${region}">${region}</option>`)
       .join("")}`;
     regionFilter.value = state.regionFilter;
@@ -135,7 +174,7 @@
       return;
     }
 
-    label.textContent = state.view === "week" ? "Week overview" : "Day view";
+    label.textContent = state.view === "week" ? t("weekView") : t("dayView");
 
     if (state.view === "week") {
       dayView.classList.add("hidden");
@@ -150,6 +189,7 @@
     const technicians = visibleTechnicians();
     const jobs = visibleJobs();
     const grid = document.getElementById("planningGrid");
+    const main = document.getElementById("planningMain");
     grid.style.setProperty("--planning-columns", String(Math.max(technicians.length, 1)));
     renderHeaders(technicians);
     renderTimeSidebar();
@@ -197,6 +237,10 @@
 
       grid.appendChild(column);
     });
+
+    if (main) {
+      main.scrollLeft = 0;
+    }
   }
 
   async function loadPlanningData() {

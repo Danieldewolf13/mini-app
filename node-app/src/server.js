@@ -10,6 +10,8 @@ const {
   updateJobStatus,
 } = require("./repository");
 const { getPlanningData } = require("./services/planningService");
+const { createTranslator } = require("./i18n");
+const { ensurePreferencesSchema, getUserPreferences, saveUserPreferences, sanitizePreferences } = require("./preferences");
 const {
   adminCreateUser,
   adminToggleUserActive,
@@ -36,14 +38,15 @@ const staticDir = path.resolve(__dirname, "../public");
 const viewsDir = path.resolve(__dirname, "../views");
 
 const navigation = [
-  { href: "/dispatcher/dashboard", label: "Dashboard", key: "dashboard" },
-  { href: "/dispatcher/jobs", label: "Jobs", key: "jobs" },
-  { href: "/dispatcher/planning", label: "Planning", key: "planning" },
-  { href: "/dispatcher/calendar", label: "Calendar", key: "calendar" },
-  { href: "/dispatcher/technicians", label: "Technicians", key: "technicians" },
-  { href: "/dispatcher/documents", label: "Documents", key: "documents" },
-  { href: "/dispatcher/finance", label: "Finance", key: "finance" },
-  { href: "/dispatcher/users", label: "Users", key: "users" },
+  { href: "/dispatcher/dashboard", labelKey: "nav.dashboard", fallbackLabel: "Dashboard", key: "dashboard" },
+  { href: "/dispatcher/jobs", labelKey: "nav.jobs", fallbackLabel: "Jobs", key: "jobs" },
+  { href: "/dispatcher/planning", labelKey: "nav.planning", fallbackLabel: "Planning", key: "planning" },
+  { href: "/dispatcher/calendar", labelKey: "nav.calendar", fallbackLabel: "Calendar", key: "calendar" },
+  { href: "/dispatcher/technicians", labelKey: "nav.technicians", fallbackLabel: "Technicians", key: "technicians" },
+  { href: "/dispatcher/documents", labelKey: "nav.documents", fallbackLabel: "Documents", key: "documents" },
+  { href: "/dispatcher/finance", labelKey: "nav.finance", fallbackLabel: "Finance", key: "finance" },
+  { href: "/dispatcher/users", labelKey: "nav.users", fallbackLabel: "Users", key: "users" },
+  { href: "/dispatcher/settings", labelKey: "nav.settings", fallbackLabel: "Settings", key: "settings" },
 ];
 
 app.set("view engine", "ejs");
@@ -55,6 +58,16 @@ app.use(withAuth);
 app.use(async (_req, _res, next) => {
   try {
     await ensureAuthSchema();
+    await ensurePreferencesSchema();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.use(async (req, _res, next) => {
+  try {
+    req.userPreferences = req.authUser ? await getUserPreferences(req.authUser.username) : sanitizePreferences();
     next();
   } catch (error) {
     next(error);
@@ -347,25 +360,32 @@ function baseViewModel({
   ...payload
 }) {
   const currentUser = payload.currentUser || null;
+  const currentPreferences = payload.currentPreferences || sanitizePreferences();
+  const t = createTranslator(currentPreferences.language);
   return {
     pageTitle,
     activeNav,
     billitBaseUrl: settings.billitBaseUrl,
     currentPath: activeNav,
-    navigation: filterNavigationForUser(navigation, currentUser),
+    navigation: filterNavigationForUser(navigation, currentUser).map((item) => ({
+      ...item,
+      label: t(item.labelKey, item.fallbackLabel),
+    })),
     dbError,
     contentClass,
     rightPanel,
     actions,
     currentUser,
+    currentPreferences,
     extraStyles,
     extraScripts,
+    t,
     serialize: (value) => JSON.stringify(value ?? []),
     ...payload,
   };
 }
 
-function renderPlaceholder(res, key, title, description, currentUser, statusCode = 200) {
+function renderPlaceholder(res, key, title, description, currentUser, currentPreferences, statusCode = 200) {
   res.status(statusCode);
   res.render(
     "dispatcher/placeholder",
@@ -376,6 +396,7 @@ function renderPlaceholder(res, key, title, description, currentUser, statusCode
       description,
       actions: [],
       currentUser,
+      currentPreferences,
     })
   );
 }
@@ -387,7 +408,7 @@ function requireNavAccess(key) {
       return;
     }
 
-    renderPlaceholder(res, key, "Geen toegang", "Je hebt geen toegang tot deze module.", req.authUser, 403);
+    renderPlaceholder(res, key, "Geen toegang", "Je hebt geen toegang tot deze module.", req.authUser, req.userPreferences, 403);
   };
 }
 
@@ -406,6 +427,14 @@ async function loadUsersPageData() {
       { username: settings.adminUser, name: settings.adminName, role: "admin" },
       { username: settings.dispatcherUser, name: settings.dispatcherName, role: "dispatcher" },
     ],
+  };
+}
+
+function buildDashboardLayout(preferences) {
+  const dashboard = preferences?.dashboard || sanitizePreferences().dashboard;
+  return {
+    visible: dashboard.visible,
+    slots: dashboard.slots,
   };
 }
 
@@ -516,13 +545,15 @@ app.get("/dispatcher/dashboard", requireAuthPage, requireNavAccess("dashboard"),
   res.render(
     "dispatcher/dashboard",
     baseViewModel({
-      pageTitle: "Dispatcher dashboard",
+      pageTitle: createTranslator(req.userPreferences?.language)("dashboard.title", "Dispatcher dashboard"),
       activeNav: "dashboard",
       contentClass: "content--fullwidth dashboard-content",
       actions: canViewFinance(req.authUser)
         ? [{ href: settings.billitBaseUrl, label: "Open Billit", variant: "ghost", external: true }]
         : [],
       currentUser: serializeUser(req.authUser),
+      currentPreferences: req.userPreferences,
+      dashboardLayout: buildDashboardLayout(req.userPreferences),
       ...payload,
     })
   );
@@ -541,6 +572,7 @@ app.get("/dispatcher/jobs", requireAuthPage, requireNavAccess("jobs"), async (re
       filters: payload.filters,
       dbError: payload.db_error,
       currentUser: serializeUser(req.authUser),
+      currentPreferences: req.userPreferences,
     })
   );
 });
@@ -550,15 +582,16 @@ app.get("/dispatcher/planning", requireAuthPage, requireNavAccess("planning"), (
   res.render(
     "dispatcher/planning",
     baseViewModel({
-      pageTitle: "Planning",
+      pageTitle: createTranslator(req.userPreferences?.language)("planning.title", "Planning"),
       activeNav: "planning",
       rightPanel: "dispatcher/partials/job_detail_panel",
-      extraStyles: ["/static/css/planning.css?v=planning-1"],
-      extraScripts: ["/static/js/planning.js?v=planning-1"],
+      extraStyles: ["/static/css/planning.css?v=planning-2"],
+      extraScripts: ["/static/js/planning.js?v=planning-2"],
       planning_date: today,
       planning_view: "day",
       actions: [],
       currentUser: serializeUser(req.authUser),
+      currentPreferences: req.userPreferences,
     })
   );
 });
@@ -569,7 +602,8 @@ app.get("/dispatcher/calendar", requireAuthPage, requireNavAccess("calendar"), (
     "calendar",
     "Calendar",
     "Calendar wordt in de volgende stap aangesloten op de dispatcherstructuur.",
-    serializeUser(req.authUser)
+    serializeUser(req.authUser),
+    req.userPreferences
   );
 });
 
@@ -579,7 +613,8 @@ app.get("/dispatcher/technicians", requireAuthPage, requireNavAccess("technician
     "technicians",
     "Technicians",
     "Techniekerbeheer komt op deze pagina zodra de basisstructuur vastligt.",
-    serializeUser(req.authUser)
+    serializeUser(req.authUser),
+    req.userPreferences
   );
 });
 
@@ -589,7 +624,8 @@ app.get("/dispatcher/documents", requireAuthPage, requireNavAccess("documents"),
     "documents",
     "Documents",
     "Documentcontrole komt hier in een volgende fase.",
-    serializeUser(req.authUser)
+    serializeUser(req.authUser),
+    req.userPreferences
   );
 });
 
@@ -599,7 +635,8 @@ app.get("/dispatcher/finance", requireAuthPage, requireNavAccess("finance"), (re
     "finance",
     "Finance",
     "Finance krijgt hier later zijn eigen werkoverzicht.",
-    serializeUser(req.authUser)
+    serializeUser(req.authUser),
+    req.userPreferences
   );
 });
 
@@ -612,6 +649,7 @@ app.get("/dispatcher/users", requireAuthPage, requireNavAccess("users"), async (
         pageTitle: "Users",
         activeNav: "users",
         currentUser: serializeUser(req.authUser),
+        currentPreferences: req.userPreferences,
         success: req.query.success || null,
         formError: null,
         formValues: {
@@ -648,6 +686,7 @@ app.post("/dispatcher/users/create", requireAuthPage, requireNavAccess("users"),
           pageTitle: "Users",
           activeNav: "users",
           currentUser: serializeUser(req.authUser),
+          currentPreferences: req.userPreferences,
           success: null,
           formError: error.message || String(error),
           formValues: {
@@ -688,6 +727,45 @@ app.post("/dispatcher/users/:username/toggle", requireAuthPage, requireNavAccess
   } catch (error) {
     next(error);
   }
+});
+
+app.get("/dispatcher/settings", requireAuthPage, requireNavAccess("settings"), (req, res) => {
+  res.render(
+    "dispatcher/settings",
+    baseViewModel({
+      pageTitle: createTranslator(req.userPreferences?.language)("settings.title", "Settings"),
+      activeNav: "settings",
+      currentUser: serializeUser(req.authUser),
+      currentPreferences: req.userPreferences,
+      success: req.query.success || null,
+      settingsValues: req.userPreferences,
+    })
+  );
+});
+
+app.post("/dispatcher/settings", requireAuthPage, requireNavAccess("settings"), async (req, res) => {
+  const nextPreferences = sanitizePreferences({
+    language: req.body.language,
+    dashboard: {
+      visible: {
+        queue: req.body.visible_queue === "1",
+        jobs: req.body.visible_jobs === "1",
+        technicians: req.body.visible_technicians === "1",
+        appointments: req.body.visible_appointments === "1",
+        detail: req.body.visible_detail === "1",
+        map: req.body.visible_map === "1",
+      },
+      slots: {
+        left: req.body.slot_left,
+        center: req.body.slot_center,
+        sideTop: req.body.slot_side_top,
+        sideBottom: req.body.slot_side_bottom,
+      },
+    },
+  });
+
+  await saveUserPreferences(req.authUser.username, nextPreferences);
+  res.redirect("/dispatcher/settings?success=1");
 });
 
 app.get("/api/dashboard", requireAuthApi, async (req, res) => {

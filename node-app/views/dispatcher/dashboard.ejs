@@ -1,4 +1,12 @@
 <%
+const layout = dashboardLayout || currentPreferences.dashboard;
+const modulePartials = {
+  queue: "./partials/action_queue",
+  jobs: "./partials/active_jobs_list",
+  technicians: "./partials/technicians_widget",
+  appointments: "./partials/appointments_widget",
+};
+
 const body = `
 <div class="dashboard-page dashboard-canvas">
   <section class="dashboard-row dashboard-row-kpis">
@@ -6,36 +14,58 @@ const body = `
   </section>
 
   <section class="dashboard-row dashboard-row-workspace">
-    <div class="workspace-zone workspace-zone-queue">
-      ${include("./partials/action_queue")}
-    </div>
+    ${
+      layout.visible[layout.slots.left]
+        ? `<div class="workspace-zone workspace-zone-left">${include(modulePartials[layout.slots.left])}</div>`
+        : ``
+    }
 
-    <div class="workspace-zone workspace-zone-jobs">
-      ${include("./partials/active_jobs_list")}
-    </div>
+    ${
+      layout.visible[layout.slots.center]
+        ? `<div class="workspace-zone workspace-zone-center">${include(modulePartials[layout.slots.center])}</div>`
+        : ``
+    }
 
-    <div class="workspace-zone workspace-zone-side">
-      ${include("./partials/technicians_widget")}
-      ${include("./partials/appointments_widget")}
-    </div>
+    ${
+      layout.visible.technicians || layout.visible.appointments
+        ? `
+          <div class="workspace-zone workspace-zone-side">
+            ${layout.visible[layout.slots.sideTop] ? include(modulePartials[layout.slots.sideTop]) : ""}
+            ${layout.visible[layout.slots.sideBottom] ? include(modulePartials[layout.slots.sideBottom]) : ""}
+          </div>
+        `
+        : ``
+    }
   </section>
 
-  <section class="dashboard-row dashboard-row-detail">
-    <div class="detail-zone">
-      ${include("./partials/job_detail_panel")}
-    </div>
-  </section>
+  ${
+    layout.visible.detail
+      ? `
+        <section class="dashboard-row dashboard-row-detail">
+          <div class="detail-zone">
+            ${include("./partials/job_detail_panel")}
+          </div>
+        </section>
+      `
+      : ``
+  }
 
-  <section class="panel map-card map-zone">
-    <div class="section-head">
-      <div>
-        <p class="section-kicker">Overview</p>
-        <h2>Mini map</h2>
-      </div>
-      <span class="section-meta">Regional overview only</span>
-    </div>
-    ${include("./partials/mini_map")}
-  </section>
+  ${
+    layout.visible.map
+      ? `
+        <section class="panel map-card map-zone">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">${t("dashboard.map.kicker", "Overview")}</p>
+              <h2>${t("dashboard.map.title", "Mini map")}</h2>
+            </div>
+            <span class="section-meta">Regional overview only</span>
+          </div>
+          ${include("./partials/mini_map")}
+        </section>
+      `
+      : ``
+  }
 </div>
 `; %>
 <%- include("../layout/base", { ...locals, body }) %>

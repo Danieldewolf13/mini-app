@@ -1,0 +1,92 @@
+<%
+const prefs = settingsValues || currentPreferences;
+const dashboard = prefs.dashboard;
+const body = `
+  <div class="users-page settings-page">
+    <section class="panel users-intro-panel">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">${t("settings.kicker", "Personal")}</p>
+          <h2>${t("settings.title", "Settings")}</h2>
+        </div>
+      </div>
+      <p class="placeholder-copy">Beheer hier je taal en welke blokken jij zelf op het dashboard wilt zien. De layout blijft bewust stabiel, maar jij kunt de prioriteit van de vaste zones wel sturen.</p>
+    </section>
+
+    ${success ? `<section class="alert-banner alert-banner--success"><strong>${t("settings.saved", "Settings updated.")}</strong></section>` : ""}
+
+    <form class="users-grid settings-grid" method="post" action="/dispatcher/settings">
+      <section class="panel users-create-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">${t("settings.language", "Language")}</p>
+            <h2>${t("settings.title", "Settings")}</h2>
+          </div>
+        </div>
+
+        <div class="users-form">
+          <label class="auth-field">
+            <span>${t("settings.language", "Language")}</span>
+            <select name="language">
+              <option value="nl" ${prefs.language === "nl" ? "selected" : ""}>Nederlands</option>
+              <option value="en" ${prefs.language === "en" ? "selected" : ""}>English</option>
+              <option value="fr" ${prefs.language === "fr" ? "selected" : ""}>Français</option>
+              <option value="ru" ${prefs.language === "ru" ? "selected" : ""}>Русский</option>
+            </select>
+          </label>
+
+          <div class="settings-checkboxes">
+            <label class="settings-check"><input type="checkbox" name="visible_queue" value="1" ${dashboard.visible.queue ? "checked" : ""}> <span>${t("settings.show_queue", "Show queue")}</span></label>
+            <label class="settings-check"><input type="checkbox" name="visible_jobs" value="1" ${dashboard.visible.jobs ? "checked" : ""}> <span>${t("settings.show_jobs", "Show active jobs")}</span></label>
+            <label class="settings-check"><input type="checkbox" name="visible_technicians" value="1" ${dashboard.visible.technicians ? "checked" : ""}> <span>${t("settings.show_technicians", "Show technicians")}</span></label>
+            <label class="settings-check"><input type="checkbox" name="visible_appointments" value="1" ${dashboard.visible.appointments ? "checked" : ""}> <span>${t("settings.show_appointments", "Show appointments")}</span></label>
+            <label class="settings-check"><input type="checkbox" name="visible_detail" value="1" ${dashboard.visible.detail ? "checked" : ""}> <span>${t("settings.show_detail", "Show job detail")}</span></label>
+            <label class="settings-check"><input type="checkbox" name="visible_map" value="1" ${dashboard.visible.map ? "checked" : ""}> <span>${t("settings.show_map", "Show mini map")}</span></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel users-builtins-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">${t("settings.layout", "Dashboard layout")}</p>
+            <h2>${t("settings.dashboard_modules", "Dashboard modules")}</h2>
+          </div>
+        </div>
+
+        <div class="users-form">
+          <label class="auth-field">
+            <span>${t("settings.left_slot", "Left column")}</span>
+            <select name="slot_left">
+              <option value="queue" ${dashboard.slots.left === "queue" ? "selected" : ""}>${t("settings.slot.queue", "Queue")}</option>
+              <option value="jobs" ${dashboard.slots.left === "jobs" ? "selected" : ""}>${t("settings.slot.jobs", "Active jobs")}</option>
+            </select>
+          </label>
+          <label class="auth-field">
+            <span>${t("settings.center_slot", "Center column")}</span>
+            <select name="slot_center">
+              <option value="jobs" ${dashboard.slots.center === "jobs" ? "selected" : ""}>${t("settings.slot.jobs", "Active jobs")}</option>
+              <option value="queue" ${dashboard.slots.center === "queue" ? "selected" : ""}>${t("settings.slot.queue", "Queue")}</option>
+            </select>
+          </label>
+          <label class="auth-field">
+            <span>${t("settings.side_top_slot", "Right top block")}</span>
+            <select name="slot_side_top">
+              <option value="technicians" ${dashboard.slots.sideTop === "technicians" ? "selected" : ""}>${t("settings.slot.technicians", "Technicians")}</option>
+              <option value="appointments" ${dashboard.slots.sideTop === "appointments" ? "selected" : ""}>${t("settings.slot.appointments", "Appointments")}</option>
+            </select>
+          </label>
+          <label class="auth-field">
+            <span>${t("settings.side_bottom_slot", "Right bottom block")}</span>
+            <select name="slot_side_bottom">
+              <option value="appointments" ${dashboard.slots.sideBottom === "appointments" ? "selected" : ""}>${t("settings.slot.appointments", "Appointments")}</option>
+              <option value="technicians" ${dashboard.slots.sideBottom === "technicians" ? "selected" : ""}>${t("settings.slot.technicians", "Technicians")}</option>
+            </select>
+          </label>
+          <button class="auth-submit" type="submit">${t("settings.save", "Save settings")}</button>
+        </div>
+      </section>
+    </form>
+  </div>
+`; %>
+<%- include("../layout/base", { ...locals, body }) %>
