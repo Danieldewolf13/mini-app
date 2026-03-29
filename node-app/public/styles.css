@@ -269,6 +269,24 @@ select {
   width: 100%;
 }
 
+.dashboard-page .section-kicker,
+.dashboard-page .kpi-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.11em;
+}
+
+.dashboard-page .section-head h2,
+.dashboard-page .detail-header h2 {
+  font-size: 22px;
+  letter-spacing: 0.03em;
+}
+
+.dashboard-page .section-link,
+.dashboard-page .section-meta {
+  font-size: 14px;
+}
+
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -284,6 +302,15 @@ select {
   font-family: "Barlow Condensed", sans-serif;
   font-size: 42px;
   color: var(--blue);
+}
+
+.dashboard-page .kpi {
+  padding: 14px 18px;
+}
+
+.dashboard-page .kpi strong {
+  font-size: 28px;
+  line-height: 1;
 }
 
 .dashboard-grid {
@@ -377,6 +404,10 @@ select {
   font-family: "Barlow Condensed", sans-serif;
   font-size: 28px;
   color: var(--blue);
+}
+
+.dashboard-page .focus-row strong {
+  font-size: 22px;
 }
 
 .summary-actions {
@@ -482,6 +513,10 @@ select {
   color: var(--blue);
 }
 
+.dashboard-page .job-card-head strong {
+  font-size: 22px;
+}
+
 .job-card-head p,
 .job-card-body span {
   margin: 0;
@@ -503,6 +538,10 @@ select {
   font-family: "Barlow Condensed", sans-serif;
   font-size: 16px;
   text-transform: uppercase;
+}
+
+.dashboard-page .status-pill {
+  font-size: 14px;
 }
 
 .tech-card,
