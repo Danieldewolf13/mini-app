@@ -13,6 +13,7 @@
     date: window.MINI_APP_DATA.planningDate || new Date().toISOString().slice(0, 10),
     view: window.MINI_APP_DATA.planningView || "day",
     payload: null,
+    calendarEvents: [], // Google Calendar events by techKey
     technicianFilter: "",
     regionFilter: "",
     language: window.MINI_APP_DATA.currentLanguage || "nl",
@@ -306,6 +307,25 @@
           column.appendChild(block);
         });
 
+      // Google Calendar events for this technician
+      const techKey = (tech.tech_key || "").toUpperCase();
+      const dayStart = new Date(`${state.date}T00:00:00`);
+      const dayEnd   = new Date(`${state.date}T23:59:59`);
+      const gcalEntry = state.calendarEvents.find((e) => (e.techKey || "").toUpperCase() === techKey);
+      (gcalEntry?.events || []).forEach((evt) => {
+        if (!evt.start) return;
+        const evtStart = new Date(evt.start);
+        const evtEnd   = evt.end ? new Date(evt.end) : new Date(evtStart.getTime() + 3600000);
+        if (evtEnd < dayStart || evtStart > dayEnd) return;
+        const block = document.createElement("div");
+        block.className = "gcal-block";
+        block.style.top    = `${slotTop(evt.start)}px`;
+        block.style.height = `${Math.max(slotHeight(evt.start, evt.end || new Date(evtStart.getTime() + 3600000).toISOString()), 28)}px`;
+        block.title = `${evt.title}\n${evt.location || ""}`.trim();
+        block.innerHTML = `<span class="gcal-label">📅 ${evt.title}</span>`;
+        column.appendChild(block);
+      });
+
       grid.appendChild(column);
     });
 
@@ -315,8 +335,12 @@
   }
 
   async function loadPlanningData() {
-    const response = await fetch(`/api/planning?date=${state.date}&view=${state.view}`);
-    state.payload = await response.json();
+    const [planResp, calResp] = await Promise.all([
+      fetch(`/api/planning?date=${state.date}&view=${state.view}`),
+      fetch("/api/calendar").catch(() => null),
+    ]);
+    state.payload = await planResp.json();
+    state.calendarEvents = calResp?.ok ? (await calResp.json()) : [];
     renderFilters();
     renderGrid();
     renderSelectionSummary();

@@ -143,6 +143,60 @@ async function geocodeAddress(address) {
   };
 }
 
+const technicianMarkers = {};
+
+function techIcon(name) {
+  const initials = (name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  return L.divIcon({
+    className: "",
+    html: `<div class="tech-map-marker" title="${name}">${initials}</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+}
+
+function minutesAgo(dateStr) {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+  if (diff < 1) return "nu";
+  if (diff === 1) return "1 min geleden";
+  return `${diff} min geleden`;
+}
+
+async function refreshTechnicianLocations() {
+  if (!map) return;
+  try {
+    const resp = await fetch("/api/locations");
+    if (!resp.ok) return;
+    const locs = await resp.json();
+
+    // Remove markers for technicians no longer in response
+    const activeIds = new Set(locs.map((l) => String(l.tg_id)));
+    for (const [id, marker] of Object.entries(technicianMarkers)) {
+      if (!activeIds.has(id)) {
+        marker.remove();
+        delete technicianMarkers[id];
+      }
+    }
+
+    // Add or update markers
+    locs.forEach((loc) => {
+      const id = String(loc.tg_id);
+      const latLng = [loc.latitude, loc.longitude];
+      const popupText = `<strong>${loc.full_name || "Technieker"}</strong><br>${minutesAgo(loc.updated_at)}`;
+      if (technicianMarkers[id]) {
+        technicianMarkers[id].setLatLng(latLng);
+        technicianMarkers[id].setPopupContent(popupText);
+      } else {
+        technicianMarkers[id] = L.marker(latLng, { icon: techIcon(loc.full_name), zIndexOffset: 1000 })
+          .addTo(map)
+          .bindPopup(popupText);
+      }
+    });
+  } catch (_e) {
+    // network errors are non-fatal
+  }
+}
+
 function initMap() {
   const mapNode = document.querySelector("#map");
   if (!mapNode || typeof L === "undefined") {
@@ -158,6 +212,10 @@ function initMap() {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap",
   }).addTo(map);
+
+  // Load technician locations immediately and refresh every 30s
+  refreshTechnicianLocations();
+  setInterval(refreshTechnicianLocations, 30000);
 }
 
 function setMapInteraction(enabled) {

@@ -10,6 +10,7 @@ const {
   createOrUpdateSuggestedAction,
   createQuickJob,
   ensureSuggestedActionsSchema,
+  fetchActiveTechnicianLocations,
   fetchPlanningTechnicians,
   fetchSuggestedActionById,
   findJobByChatId,
@@ -20,8 +21,10 @@ const {
   updateJobAppointment,
   updateJobStatus,
   updateSuggestedActionStatus,
+  upsertTechnicianLocation,
 } = require("./repository");
 const { getPlanningData } = require("./services/planningService");
+const { upsertCalendarEvent, fetchUpcomingCalendarEvents } = require("./googleCalendar");
 const { createTranslator } = require("./i18n");
 const { ensurePreferencesSchema, getUserPreferences, saveUserPreferences, sanitizePreferences } = require("./preferences");
 const {
@@ -934,6 +937,16 @@ app.get("/api/planning", requireAuthApi, async (req, res) => {
   }
 });
 
+// Google Calendar feed for planning page
+app.get("/api/calendar", requireAuthApi, async (req, res) => {
+  try {
+    const data = await fetchUpcomingCalendarEvents(null, 14);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/jobs", requireAuthApi, async (req, res) => {
   const payload = scopeJobsPayload(await loadJobsPayload(), req.authUser);
   const jobs = payload.jobs.map((job) => ({
@@ -1040,6 +1053,22 @@ app.post("/api/jobs/:id/appointment", requireAuthApi, async (req, res) => {
     status: appointmentStatus,
   });
 
+  // Sync to Google Calendar if a technician is assigned
+  const techKey = payload.job?.tech_key || null;
+  if (techKey && appointmentStatus !== "cancelled") {
+    const addr = payload.job?.address_raw || "";
+    const clientName = payload.job?.client_name || "";
+    const problemType = payload.job?.problem_type || "";
+    upsertCalendarEvent({
+      techKey,
+      eventId: payload.appointment?.calendar_event_id || null,
+      title: `#${req.params.id} – ${problemType || "Interventie"}`,
+      description: `Klant: ${clientName}\nAdres: ${addr}\nType: ${afspraakType}`,
+      address: addr,
+      scheduledAt,
+    }).catch(() => {});
+  }
+
   const updatedPayload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
   res.json({ ok: true, job: updatedPayload });
 });
@@ -1071,6 +1100,39 @@ app.post("/api/jobs", requireAuthApi, async (req, res) => {
     res.status(500).json({ error: err.message || "Aanmaken mislukt" });
   }
 });
+// ── Technician live locations ──────────────────────────────────────────────
+
+// POST from Telegram bot when a technician shares location in the general group
+app.post("/api/locations", async (req, res) => {
+  const authHeader = String(req.headers.authorization || "");
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  if (!settings.karenBridgeToken || token !== settings.karenBridgeToken) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { tg_id, full_name, latitude, longitude, accuracy } = req.body || {};
+  if (!tg_id || latitude == null || longitude == null) {
+    res.status(400).json({ error: "tg_id, latitude en longitude zijn verplicht" });
+    return;
+  }
+  try {
+    await upsertTechnicianLocation({ tgId: tg_id, fullName: full_name, latitude, longitude, accuracy });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET for the mini-map — returns locations updated in last 2 hours
+app.get("/api/locations", requireAuthApi, async (req, res) => {
+  try {
+    const locations = await fetchActiveTechnicianLocations();
+    res.json(locations);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ────────────────────────────────────────────────────────────────────────────
 
 // ── Telegram Mini App ──────────────────────────────────────────────────────

@@ -204,7 +204,6 @@ async function fetchTechnicianSummary() {
      AND c.status NOT IN ('completed', 'cancelled')
     WHERE u.is_active = 1
       AND u.tg_id IS NOT NULL
-      AND NULLIF(TRIM(COALESCE(u.tech_key, '')), '') IS NOT NULL
     GROUP BY u.tg_id, u.full_name, u.tech_key, u.role
     ORDER BY u.full_name ASC
   `;
@@ -222,7 +221,6 @@ async function fetchPlanningTechnicians() {
     FROM users u
     WHERE u.is_active = 1
       AND u.tg_id IS NOT NULL
-      AND NULLIF(TRIM(COALESCE(u.tech_key, '')), '') IS NOT NULL
     ORDER BY u.full_name ASC
   `;
 
@@ -1037,6 +1035,48 @@ async function buildJobDetailPayload(id) {
   };
 }
 
+// ── Live technician locations ──────────────────────────────────────────────
+
+async function ensureLocationSchema() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS technician_locations (
+      tg_id        BIGINT       NOT NULL PRIMARY KEY,
+      full_name    VARCHAR(120) NULL,
+      latitude     DOUBLE       NOT NULL,
+      longitude    DOUBLE       NOT NULL,
+      accuracy     FLOAT        NULL,
+      updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+async function upsertTechnicianLocation({ tgId, fullName, latitude, longitude, accuracy }) {
+  await ensureLocationSchema();
+  await query(
+    `INSERT INTO technician_locations (tg_id, full_name, latitude, longitude, accuracy, updated_at)
+     VALUES (?, ?, ?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE
+       full_name  = VALUES(full_name),
+       latitude   = VALUES(latitude),
+       longitude  = VALUES(longitude),
+       accuracy   = VALUES(accuracy),
+       updated_at = NOW()`,
+    [Number(tgId), fullName || null, Number(latitude), Number(longitude), accuracy ? Number(accuracy) : null]
+  );
+}
+
+async function fetchActiveTechnicianLocations() {
+  await ensureLocationSchema();
+  // Only show locations updated in the last 2 hours
+  const rows = await query(`
+    SELECT tg_id, full_name, latitude, longitude, accuracy, updated_at
+    FROM technician_locations
+    WHERE updated_at >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+    ORDER BY updated_at DESC
+  `);
+  return rows;
+}
+
 module.exports = {
   assignJobTechnician,
   autoApplySuggestedAction,
@@ -1046,6 +1086,7 @@ module.exports = {
   createOrUpdateSuggestedAction,
   createQuickJob,
   ensureSuggestedActionsSchema,
+  fetchActiveTechnicianLocations,
   fetchSuggestedActionById,
   fetchUserById,
   fetchUserByTechKey,
@@ -1059,6 +1100,7 @@ module.exports = {
   updateJobAppointment,
   updateJobStatus,
   updateSuggestedActionStatus,
+  upsertTechnicianLocation,
 };
 
 

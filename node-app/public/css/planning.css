@@ -480,3 +480,25 @@
     right: 6px;
   }
 }
+
+/* ── Google Calendar blocks ──────────────────────────────── */
+.gcal-block {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  background: rgba(52, 168, 83, 0.15);
+  border-left: 3px solid #34a853;
+  border-radius: 4px;
+  padding: 2px 6px;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+.gcal-label {
+  font-size: 11px;
+  color: #1e7e34;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
