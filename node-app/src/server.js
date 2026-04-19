@@ -845,6 +845,14 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
     }
   }
 
+  // If there's no linked job AND this isn't a job-creation or financial intent,
+  // there's nothing actionable — skip silently rather than cluttering the inbox.
+  const isActionable = JOB_CREATE_INTENTS.has(intent) || linkedJobId || FORCE_CONFIRM_INTENTS.has(intent);
+  if (!isActionable) {
+    res.status(200).json({ ok: true, id: null, auto_applied: false, linked_job_id: null, skipped: true });
+    return;
+  }
+
   const row = await createOrUpdateSuggestedAction({
     source_type: result.source_type || "telegram",
     source_chat_id: result.source_chat_id,
