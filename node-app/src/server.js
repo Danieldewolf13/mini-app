@@ -56,7 +56,7 @@ const navigation = [
   { href: "/dispatcher/dashboard", labelKey: "nav.dashboard", fallbackLabel: "Dashboard", key: "dashboard" },
   { href: "/dispatcher/jobs", labelKey: "nav.jobs", fallbackLabel: "Jobs", key: "jobs" },
   { href: "/dispatcher/planning", labelKey: "nav.planning", fallbackLabel: "Planning", key: "planning" },
-  { href: "/dispatcher/calendar", labelKey: "nav.calendar", fallbackLabel: "Calendar", key: "calendar" },
+  { href: "/dispatcher/kalender", labelKey: "nav.calendar", fallbackLabel: "Kalender", key: "calendar" },
   { href: "/dispatcher/technicians", labelKey: "nav.technicians", fallbackLabel: "Technicians", key: "technicians" },
   { href: "/dispatcher/documents", labelKey: "nav.documents", fallbackLabel: "Documents", key: "documents" },
   { href: "/dispatcher/finance", labelKey: "nav.finance", fallbackLabel: "Finance", key: "finance" },
@@ -634,20 +634,23 @@ app.get("/dispatcher/planning", requireAuthPage, requireNavAccess("planning"), (
   );
 });
 
-app.get("/dispatcher/calendar", requireAuthPage, requireNavAccess("calendar"), (req, res) => {
+function renderCalendarPage(req, res) {
   res.render(
     "dispatcher/calendar",
     baseViewModel({
       pageTitle: "Kalender",
       activeNav: "calendar",
       contentClass: "content--fullwidth",
-      extraStyles: ["/static/css/calendar.css?v=1"],
-      extraScripts: ["/static/js/calendar.js?v=1"],
+      extraStyles: ["/static/css/calendar.css?v=2"],
+      extraScripts: ["/static/js/calendar.js?v=2"],
       currentUser: serializeUser(req.authUser),
       currentPreferences: req.userPreferences,
     })
   );
-});
+}
+
+app.get("/dispatcher/kalender", requireAuthPage, requireNavAccess("calendar"), renderCalendarPage);
+app.get("/dispatcher/calendar",  requireAuthPage, requireNavAccess("calendar"), renderCalendarPage);
 
 app.get("/dispatcher/technicians", requireAuthPage, requireNavAccess("technicians"), (req, res) => {
   renderPlaceholder(
