@@ -78,12 +78,55 @@ function renderJobActions(data) {
     ),
   ].join("");
 
+  const appointmentTypeOptions = (data.actions?.appointment?.type_options || [])
+    .map(
+      (option) =>
+        `<option value="${escapeHtml(option.value)}" ${
+          option.value === data.actions?.appointment?.type_value ? "selected" : ""
+        }>${escapeHtml(option.label)}</option>`
+    )
+    .join("");
+
+  const appointmentStatusOptions = (data.actions?.appointment?.status_options || [])
+    .map(
+      (option) =>
+        `<option value="${escapeHtml(option.value)}" ${
+          option.value === data.actions?.appointment?.status_value ? "selected" : ""
+        }>${escapeHtml(option.label)}</option>`
+    )
+    .join("");
+
   const assignSection = data.actions?.assign_label
     ? `
       <form id="assignForm" class="detail-inline-form">
         <label>
           <span>${escapeHtml(data.actions.assign_label)}</span>
           <select id="assignTechnicianSelect" name="technician_id">${assignmentOptions}</select>
+        </label>
+        <button type="submit" class="inline-button">Opslaan</button>
+      </form>
+    `
+    : "";
+
+  const appointmentSection = data.actions?.appointment
+    ? `
+      <form id="appointmentForm" class="detail-inline-form">
+        <label>
+          <span>${escapeHtml(data.actions.appointment.label)}</span>
+          <input
+            id="appointmentDateInput"
+            name="scheduled_at"
+            type="datetime-local"
+            value="${escapeHtml(data.actions.appointment.scheduled_at_value || "")}"
+          />
+        </label>
+        <label>
+          <span>Type</span>
+          <select id="appointmentTypeSelect" name="afspraak_type">${appointmentTypeOptions}</select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select id="appointmentStatusSelect" name="status">${appointmentStatusOptions}</select>
         </label>
         <button type="submit" class="inline-button">Opslaan</button>
       </form>
@@ -100,6 +143,7 @@ function renderJobActions(data) {
       <button type="submit" class="inline-button">Opslaan</button>
     </form>
     ${assignSection}
+    ${appointmentSection}
   `;
 }
 
@@ -120,10 +164,20 @@ async function applyJobAction(url, payload) {
   return data.job;
 }
 
+function refreshAfterJobUpdate(updated) {
+  if (typeof window.afterJobActionUpdate === "function") {
+    return window.afterJobActionUpdate(updated);
+  }
+
+  window.setTimeout(() => window.location.reload(), 500);
+  return Promise.resolve();
+}
+
 function bindJobActionForms() {
   const feedback = document.getElementById("jobActionFeedback");
   const statusForm = document.getElementById("statusForm");
   const assignForm = document.getElementById("assignForm");
+  const appointmentForm = document.getElementById("appointmentForm");
 
   if (statusForm) {
     statusForm.addEventListener("submit", async (event) => {
@@ -144,7 +198,7 @@ function bindJobActionForms() {
           feedback.textContent = "Status bijgewerkt.";
         }
         renderJobDetail(updated);
-        window.setTimeout(() => window.location.reload(), 500);
+        refreshAfterJobUpdate(updated);
       } catch (error) {
         if (feedback) {
           feedback.textContent = error.message || "Status kon niet worden opgeslagen.";
@@ -172,10 +226,42 @@ function bindJobActionForms() {
           feedback.textContent = "Technieker bijgewerkt.";
         }
         renderJobDetail(updated);
-        window.setTimeout(() => window.location.reload(), 500);
+        refreshAfterJobUpdate(updated);
       } catch (error) {
         if (feedback) {
           feedback.textContent = error.message || "Technieker kon niet worden opgeslagen.";
+        }
+      }
+    });
+  }
+
+  if (appointmentForm) {
+    appointmentForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const dateInput = document.getElementById("appointmentDateInput");
+      const typeSelect = document.getElementById("appointmentTypeSelect");
+      const statusSelect = document.getElementById("appointmentStatusSelect");
+      if (!currentJobId || !dateInput || !typeSelect || !statusSelect) {
+        return;
+      }
+
+      try {
+        if (feedback) {
+          feedback.textContent = "Afspraak wordt opgeslagen...";
+        }
+        const updated = await applyJobAction(`/api/jobs/${currentJobId}/appointment`, {
+          scheduled_at: dateInput.value,
+          afspraak_type: typeSelect.value,
+          status: statusSelect.value,
+        });
+        if (feedback) {
+          feedback.textContent = "Afspraak bijgewerkt.";
+        }
+        renderJobDetail(updated);
+        refreshAfterJobUpdate(updated);
+      } catch (error) {
+        if (feedback) {
+          feedback.textContent = error.message || "Afspraak kon niet worden opgeslagen.";
         }
       }
     });
@@ -211,6 +297,9 @@ async function loadJobDetail(id) {
 
   const data = await response.json();
   renderJobDetail(data);
+  if (typeof window.afterJobDetailLoad === "function") {
+    window.afterJobDetailLoad(data);
+  }
 }
 
 window.loadJobDetail = loadJobDetail;

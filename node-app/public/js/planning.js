@@ -16,6 +16,7 @@
     technicianFilter: "",
     regionFilter: "",
     language: window.MINI_APP_DATA.currentLanguage || "nl",
+    selectedJobId: null,
   };
 
   const localeByLanguage = {
@@ -77,6 +78,10 @@
     return copy[language][key] || copy.nl[key] || key;
   }
 
+  function selectedJob() {
+    return (state.payload?.jobs || []).find((job) => String(job.id) === String(state.selectedJobId)) || null;
+  }
+
   function minutesSinceStart(value) {
     const date = new Date(value);
     return (date.getHours() - START_HOUR) * 60 + date.getMinutes();
@@ -135,6 +140,29 @@
       .map((region) => `<option value="${region}">${region}</option>`)
       .join("")}`;
     regionFilter.value = state.regionFilter;
+  }
+
+  function renderSelectionSummary() {
+    const viewNode = document.getElementById("planningSummaryView");
+    const dateNode = document.getElementById("planningSummaryDate");
+    const technicianNode = document.getElementById("planningSummaryTechnician");
+    const regionNode = document.getElementById("planningSummaryRegion");
+    const selectionNode = document.getElementById("planningSummarySelection");
+
+    if (!viewNode || !dateNode || !technicianNode || !regionNode || !selectionNode) {
+      return;
+    }
+
+    const technician = (state.payload?.technicians || []).find((tech) => String(tech.id) === String(state.technicianFilter));
+    const job = selectedJob();
+
+    viewNode.textContent = state.view === "week" ? t("weekView") : t("dayView");
+    dateNode.textContent = state.date || "-";
+    technicianNode.textContent = technician?.name || t("allTechnicians");
+    regionNode.textContent = state.regionFilter || t("allRegions");
+    selectionNode.textContent = job
+      ? `#${job.id} · ${job.client} · ${formatTime(job.start)}-${formatTime(job.end)} · ${job.city || t("unassigned")}`
+      : "Klik op een planningblok om de detailpanel te vullen.";
   }
 
   function renderTimeSidebar() {
@@ -256,6 +284,9 @@
           if (job.overdue) {
             block.classList.add("is-overdue");
           }
+          if (String(state.selectedJobId) === String(job.id)) {
+            block.classList.add("is-selected");
+          }
           block.style.top = `${slotTop(job.start)}px`;
           block.style.height = `${slotHeight(job.start, job.end)}px`;
           block.dataset.jobId = job.id;
@@ -266,6 +297,8 @@
             <small>${formatTime(job.start)} - ${formatTime(job.end)} - ${job.city || t("unassigned")}</small>
           `;
           block.addEventListener("click", () => {
+            state.selectedJobId = job.id;
+            renderGrid();
             if (typeof window.loadJobDetail === "function") {
               window.loadJobDetail(job.id);
             }
@@ -286,7 +319,19 @@
     state.payload = await response.json();
     renderFilters();
     renderGrid();
+    renderSelectionSummary();
   }
+
+  window.afterJobDetailLoad = (job) => {
+    state.selectedJobId = job?.id || null;
+    renderGrid();
+    renderSelectionSummary();
+  };
+
+  window.afterJobActionUpdate = async (job) => {
+    state.selectedJobId = job?.id || state.selectedJobId;
+    await loadPlanningData();
+  };
 
   function setView(view) {
     state.view = view;
@@ -326,11 +371,13 @@
     document.getElementById("planningTechnicianFilter")?.addEventListener("change", (event) => {
       state.technicianFilter = event.target.value;
       renderGrid();
+      renderSelectionSummary();
     });
 
     document.getElementById("planningRegionFilter")?.addEventListener("change", (event) => {
       state.regionFilter = event.target.value;
       renderGrid();
+      renderSelectionSummary();
     });
   }
 

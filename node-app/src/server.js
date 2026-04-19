@@ -3,11 +3,21 @@ const path = require("path");
 const { settings } = require("./config");
 const {
   assignJobTechnician,
+  autoApplySuggestedAction,
   buildDashboardPayload,
   buildJobsPayload,
   buildJobDetailPayload,
+  createOrUpdateSuggestedAction,
+  ensureSuggestedActionsSchema,
   fetchPlanningTechnicians,
+  fetchSuggestedActionById,
+  findJobByChatId,
+  FORCE_CONFIRM_INTENTS,
+  listSuggestedActions,
+  SAFE_AUTO_APPLY_INTENTS,
+  updateJobAppointment,
   updateJobStatus,
+  updateSuggestedActionStatus,
 } = require("./repository");
 const { getPlanningData } = require("./services/planningService");
 const { createTranslator } = require("./i18n");
@@ -59,6 +69,7 @@ app.use(async (_req, _res, next) => {
   try {
     await ensureAuthSchema();
     await ensurePreferencesSchema();
+    await ensureSuggestedActionsSchema();
     next();
   } catch (error) {
     next(error);
@@ -124,6 +135,19 @@ async function loadJobsPayload() {
       db_error: error.message || String(error),
     };
   }
+}
+
+
+async function loadSuggestedActions() {
+  try {
+    return await listSuggestedActions(20);
+  } catch (_error) {
+    return [];
+  }
+}
+
+function canReviewSuggestedActions(user) {
+  return Boolean(user && (user.role === "admin" || user.role === "dispatcher"));
 }
 
 function buildQueue(jobs) {
@@ -301,6 +325,7 @@ function scopeJobDetailPayload(payload, user) {
 
   const canSeeFinance = canViewFinance(user);
   const canAssignJob = canAssign(user);
+  const canManageAppointment = canAssign(user);
 
   return {
     ...payload,
@@ -324,6 +349,7 @@ function scopeJobDetailPayload(payload, user) {
       ),
       technician_value: payload.actions?.technician_value ?? null,
       assignment_options: canAssignJob ? payload.actions?.assignment_options || [] : [],
+      appointment: canManageAppointment ? payload.actions?.appointment || null : null,
     },
   };
 }
@@ -338,6 +364,10 @@ function canUpdateStatus(user, payload) {
   }
 
   return user.role === "technician" && Number(payload.technician_id) === Number(user.tg_id);
+}
+
+function canManageAppointment(user) {
+  return canAssign(user);
 }
 
 function getAllowedStatusValues(user) {
@@ -542,6 +572,7 @@ app.post("/logout", (req, res) => {
 
 app.get("/dispatcher/dashboard", requireAuthPage, requireNavAccess("dashboard"), async (req, res) => {
   const payload = scopeDashboardPayload(await loadDashboardPayload(), req.authUser);
+  const suggestedActions = canReviewSuggestedActions(req.authUser) ? await loadSuggestedActions() : [];
   res.render(
     "dispatcher/dashboard",
     baseViewModel({
@@ -554,6 +585,7 @@ app.get("/dispatcher/dashboard", requireAuthPage, requireNavAccess("dashboard"),
       currentUser: serializeUser(req.authUser),
       currentPreferences: req.userPreferences,
       dashboardLayout: buildDashboardLayout(req.userPreferences),
+      suggestedActions,
       ...payload,
     })
   );
@@ -566,6 +598,7 @@ app.get("/dispatcher/jobs", requireAuthPage, requireNavAccess("jobs"), async (re
     baseViewModel({
       pageTitle: "Jobs",
       activeNav: "jobs",
+      contentClass: "content--fullwidth jobs-content",
       actions: req.authUser?.role === "technician" ? [] : [{ href: "#", label: "+ Job", variant: "primary" }],
       jobs: payload.jobs,
       technicians: payload.technicians,
@@ -584,7 +617,7 @@ app.get("/dispatcher/planning", requireAuthPage, requireNavAccess("planning"), (
     baseViewModel({
       pageTitle: createTranslator(req.userPreferences?.language)("planning.title", "Planning"),
       activeNav: "planning",
-      rightPanel: "dispatcher/partials/job_detail_panel",
+      contentClass: "content--fullwidth planning-content",
       extraStyles: ["/static/css/planning.css?v=planning-3"],
       extraScripts: ["/static/js/planning.js?v=planning-3"],
       planning_date: today,
@@ -597,14 +630,7 @@ app.get("/dispatcher/planning", requireAuthPage, requireNavAccess("planning"), (
 });
 
 app.get("/dispatcher/calendar", requireAuthPage, requireNavAccess("calendar"), (req, res) => {
-  renderPlaceholder(
-    res,
-    "calendar",
-    "Calendar",
-    "Calendar wordt in de volgende stap aangesloten op de dispatcherstructuur.",
-    serializeUser(req.authUser),
-    req.userPreferences
-  );
+  res.redirect("/dispatcher/planning");
 });
 
 app.get("/dispatcher/technicians", requireAuthPage, requireNavAccess("technicians"), (req, res) => {
@@ -773,6 +799,116 @@ app.get("/api/dashboard", requireAuthApi, async (req, res) => {
   res.status(payload.db_error ? 503 : 200).json(payload);
 });
 
+
+app.get("/api/suggested-actions", requireAuthApi, async (req, res) => {
+  if (!canReviewSuggestedActions(req.authUser)) {
+    res.status(403).json({ error: "Geen toegang" });
+    return;
+  }
+
+  const actions = await loadSuggestedActions();
+  res.json(actions);
+});
+
+app.post("/api/karen/suggested-actions", async (req, res) => {
+  const authHeader = String(req.headers.authorization || "");
+  const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const providedToken = bearerToken || String(req.headers["x-karen-bridge-token"] || "");
+
+  if (!settings.karenBridgeToken || providedToken !== settings.karenBridgeToken) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const result = req.body && typeof req.body === "object" ? req.body : {};
+  const intent = String(result.intent || "unknown");
+
+  // Smart auto-linking: use chat_id to find the active job for this Telegram group
+  let linkedJobId = result.linked_job_id ? Number(result.linked_job_id) : null;
+  let linkStatus = result.link_status || "unlinked";
+  let needsConfirmation = result.needs_confirmation !== false;
+
+  if (!linkedJobId && result.source_chat_id) {
+    try {
+      const job = await findJobByChatId(result.source_chat_id);
+      if (job) {
+        linkedJobId = job.id;
+        linkStatus = "exact";
+        if (!FORCE_CONFIRM_INTENTS.has(intent)) {
+          needsConfirmation = false;
+        }
+      }
+    } catch (_err) {
+      // linking failure is non-fatal
+    }
+  }
+
+  const row = await createOrUpdateSuggestedAction({
+    source_type: result.source_type || "telegram",
+    source_chat_id: result.source_chat_id,
+    source_message_id: result.source_message_id,
+    source_user_id: result.source_user_id,
+    intent,
+    confidence: result.confidence,
+    linked_job_id: linkedJobId,
+    linked_card_id: linkedJobId,
+    link_status: linkStatus,
+    reason_for_confirmation: needsConfirmation ? (result.reason_for_confirmation || null) : null,
+    raw_message: result.raw_message,
+    parsed_fields: result.parsed_fields || result.fields || {},
+    proposed_updates: result.proposed_updates || {},
+    needs_confirmation: needsConfirmation,
+    status: "new",
+  });
+
+  // Auto-apply safe intents when exactly linked
+  let autoApplied = false;
+  if (!needsConfirmation && row?.id && SAFE_AUTO_APPLY_INTENTS.has(intent) && linkedJobId) {
+    try {
+      autoApplied = await autoApplySuggestedAction(
+        row.id,
+        intent,
+        result.proposed_updates || {},
+        linkedJobId
+      );
+    } catch (_err) {
+      // auto-apply failure is non-fatal
+    }
+  }
+
+  res.status(201).json({ ok: true, id: row?.id || null, auto_applied: autoApplied, linked_job_id: linkedJobId });
+});
+
+
+app.post("/dispatcher/suggested-actions/:id/confirm", requireAuthPage, requireNavAccess("dashboard"), async (req, res) => {
+  if (!canReviewSuggestedActions(req.authUser)) {
+    res.status(403).send("Geen toegang");
+    return;
+  }
+
+  const action = await fetchSuggestedActionById(req.params.id);
+  const reviewer = req.authUser?.username || req.authUser?.name || "unknown";
+
+  if (action?.intent === "cancel_job_request" && Number(action?.linked_job_id)) {
+    await updateJobStatus(action.linked_job_id, "cancelled");
+    await updateSuggestedActionStatus(req.params.id, "applied", reviewer);
+  } else {
+    await updateSuggestedActionStatus(req.params.id, "confirmed", reviewer);
+  }
+
+  res.redirect("/dispatcher/dashboard");
+});
+
+app.post("/dispatcher/suggested-actions/:id/reject", requireAuthPage, requireNavAccess("dashboard"), async (req, res) => {
+  if (!canReviewSuggestedActions(req.authUser)) {
+    res.status(403).send("Geen toegang");
+    return;
+  }
+
+  await updateSuggestedActionStatus(req.params.id, "rejected", req.authUser?.username || req.authUser?.name || "unknown");
+  res.redirect("/dispatcher/dashboard");
+});
+
 app.get("/api/planning", requireAuthApi, async (req, res) => {
   try {
     const payload = scopePlanningPayload(await getPlanningData(req.query.date, req.query.view), req.authUser);
@@ -856,6 +992,114 @@ app.post("/api/jobs/:id/assign", requireAuthApi, async (req, res) => {
   const updatedPayload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
   res.json({ ok: true, job: updatedPayload });
 });
+
+app.post("/api/jobs/:id/appointment", requireAuthApi, async (req, res) => {
+  const payload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
+  if (!payload) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  if (!canManageAppointment(req.authUser)) {
+    res.status(403).json({ error: "Geen toegang om afspraken te wijzigen" });
+    return;
+  }
+
+  const scheduledAt = String(req.body.scheduled_at || "").trim();
+  const afspraakType = String(req.body.afspraak_type || "").trim();
+  const appointmentStatus = String(req.body.status || "").trim();
+
+  if (!scheduledAt) {
+    res.status(400).json({ error: "Afspraakdatum is verplicht" });
+    return;
+  }
+
+  if (!payload.actions?.appointment?.type_options?.some((option) => option.value === afspraakType)) {
+    res.status(400).json({ error: "Ongeldig afspraaktype" });
+    return;
+  }
+
+  if (!payload.actions?.appointment?.status_options?.some((option) => option.value === appointmentStatus)) {
+    res.status(400).json({ error: "Ongeldige afspraakstatus" });
+    return;
+  }
+
+  await updateJobAppointment(req.params.id, {
+    scheduledAt: scheduledAt.replace("T", " ") + ":00",
+    afspraakType,
+    status: appointmentStatus,
+  });
+
+  const updatedPayload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
+  res.json({ ok: true, job: updatedPayload });
+});
+
+// ── Telegram Mini App ──────────────────────────────────────────────────────
+const crypto = require("crypto");
+
+function validateTelegramInitData(initData) {
+  if (!settings.botToken || !initData) return null;
+  try {
+    const params = new URLSearchParams(initData);
+    const hash = params.get("hash");
+    if (!hash) return null;
+    params.delete("hash");
+
+    const dataCheckString = [...params.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n");
+
+    const secretKey = crypto.createHmac("sha256", "WebAppData").update(settings.botToken).digest();
+    const expectedHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+
+    if (expectedHash !== hash) return null;
+
+    const userRaw = params.get("user");
+    return userRaw ? JSON.parse(userRaw) : null;
+  } catch (_err) {
+    return null;
+  }
+}
+
+app.get("/tma", async (req, res) => {
+  res.render("tma/shell", {
+    pageTitle: "Mini App",
+    currentUser: req.authUser ? serializeUser(req.authUser) : null,
+    botTokenConfigured: Boolean(settings.botToken),
+  });
+});
+
+app.post("/api/tma/auth", async (req, res) => {
+  const initData = String(req.body.init_data || "");
+  const tgUser = validateTelegramInitData(initData);
+
+  if (!tgUser) {
+    res.status(401).json({ error: "Ongeldige Telegram-verificatie" });
+    return;
+  }
+
+  // Look up technician by tg_id
+  const { fetchUserById } = require("./repository");
+  const technician = await fetchUserById(tgUser.id);
+
+  if (!technician) {
+    res.status(403).json({ error: "Geen toegang: je Telegram-account is niet gekoppeld aan een technieker." });
+    return;
+  }
+
+  const user = {
+    username: technician.tech_key || String(tgUser.id),
+    name: technician.full_name || tgUser.first_name,
+    role: "technician",
+    tg_id: technician.tg_id,
+    tech_key: technician.tech_key,
+  };
+
+  res.setHeader("Set-Cookie", buildSetCookieHeader(user, { remember: true }));
+  res.json({ ok: true, user: serializeUser(user) });
+});
+// ────────────────────────────────────────────────────────────────────────────
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, app: settings.appName });

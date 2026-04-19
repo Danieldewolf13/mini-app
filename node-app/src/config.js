@@ -25,6 +25,8 @@ const settings = {
   technicianPassword: process.env.MINI_APP_TECHNICIAN_PASSWORD || "",
   setupCode: process.env.MINI_APP_SETUP_CODE || "",
   resetCode: process.env.MINI_APP_RESET_CODE || process.env.MINI_APP_SETUP_CODE || "",
+  karenBridgeToken: process.env.MINI_APP_KAREN_BRIDGE_TOKEN || "",
+  botToken: process.env.TELEGRAM_BOT_TOKEN || "",
 };
 
 module.exports = { settings };

@@ -1,4 +1,4 @@
-const { query } = require("./db");
+﻿const { query } = require("./db");
 const {
   classifyGroup,
   formatAfspraakType,
@@ -107,9 +107,27 @@ async function fetchUpcomingAppointments() {
   return query(sql);
 }
 
+function buildUpcomingPreview(appointments) {
+  const now = new Date();
+  const nextWindow = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+
+  const withinFourHours = appointments.filter((appointment) => {
+    const scheduledAt = new Date(appointment.scheduled_at);
+    const time = scheduledAt.getTime();
+    return !Number.isNaN(time) && time >= now.getTime() && time <= nextWindow.getTime();
+  });
+
+  if (withinFourHours.length) {
+    return withinFourHours.slice(0, 4);
+  }
+
+  return appointments.slice(0, 4);
+}
+
 async function fetchAppointmentsByJobId(id) {
   const sql = `
     SELECT
+      id,
       scheduled_at,
       afspraak_type,
       status,
@@ -146,6 +164,32 @@ async function assignJobTechnician(jobId, technicianId) {
   );
 }
 
+async function updateJobAppointment(jobId, { scheduledAt, afspraakType, status }) {
+  const appointments = await fetchAppointmentsByJobId(jobId);
+  const latestAppointment = appointments[0] || null;
+
+  if (latestAppointment?.id) {
+    await query(
+      `
+        UPDATE afspraak
+        SET scheduled_at = ?, afspraak_type = ?, status = ?, created_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        LIMIT 1
+      `,
+      [scheduledAt, afspraakType, status, Number(latestAppointment.id)]
+    );
+    return;
+  }
+
+  await query(
+    `
+      INSERT INTO afspraak (card_id, scheduled_at, afspraak_type, status, created_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `,
+    [Number(jobId), scheduledAt, afspraakType, status]
+  );
+}
+
 async function fetchTechnicianSummary() {
   const sql = `
     SELECT
@@ -159,7 +203,8 @@ async function fetchTechnicianSummary() {
       ON c.assigned_to = u.tg_id
      AND c.status NOT IN ('completed', 'cancelled')
     WHERE u.is_active = 1
-      AND u.role = 'technician'
+      AND u.tg_id IS NOT NULL
+      AND NULLIF(TRIM(COALESCE(u.tech_key, '')), '') IS NOT NULL
     GROUP BY u.tg_id, u.full_name, u.tech_key, u.role
     ORDER BY u.full_name ASC
   `;
@@ -176,7 +221,8 @@ async function fetchPlanningTechnicians() {
       u.role
     FROM users u
     WHERE u.is_active = 1
-      AND u.role = 'technician'
+      AND u.tg_id IS NOT NULL
+      AND NULLIF(TRIM(COALESCE(u.tech_key, '')), '') IS NOT NULL
     ORDER BY u.full_name ASC
   `;
 
@@ -249,6 +295,367 @@ async function fetchPlanningJobs(startDate, endDate) {
   return query(sql);
 }
 
+
+const FORCE_CONFIRM_INTENTS = new Set([
+  "submit_invoice_data",
+  "register_quick_payment",
+  "payment_proof_received",
+  "material_request",
+  "material_update",
+  "quote_request",
+  "quote_update",
+  "document_request",
+  "signed_document_received",
+  "reassign_job_request",
+  "cancel_job_request",
+]);
+
+const SAFE_AUTO_APPLY_INTENTS = new Set([
+  "update_status",
+  "stalled_job_flag",
+]);
+
+async function findJobByChatId(chatId) {
+  if (!chatId) return null;
+  const rows = await query(
+    `SELECT id, status FROM cards WHERE group_chat_id = ? AND status NOT IN ('completed', 'cancelled') ORDER BY created_at DESC LIMIT 1`,
+    [String(chatId)]
+  );
+  return rows[0] || null;
+}
+
+async function autoApplySuggestedAction(id, intent, proposedUpdates, linkedJobId) {
+  if (!SAFE_AUTO_APPLY_INTENTS.has(intent)) return false;
+  if (!linkedJobId) return false;
+
+  if (intent === "stalled_job_flag") {
+    await updateJobStatus(linkedJobId, "waiting_dispatcher");
+  } else if (intent === "update_status") {
+    const newStatus = proposedUpdates?.job_status;
+    if (newStatus) {
+      await updateJobStatus(linkedJobId, newStatus);
+    }
+  }
+
+  await query(
+    `UPDATE suggested_actions SET status = 'applied', reviewed_by = 'karen-auto', applied_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? LIMIT 1`,
+    [Number(id)]
+  );
+  return true;
+}
+
+async function ensureSuggestedActionsSchema() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS suggested_actions (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      source_type VARCHAR(50) NOT NULL,
+      source_chat_id BIGINT NULL,
+      source_message_id BIGINT NULL,
+      source_user_id BIGINT NULL,
+      intent VARCHAR(100) NOT NULL,
+      confidence DECIMAL(5,4) NOT NULL DEFAULT 0,
+      linked_job_id BIGINT NULL,
+      linked_card_id BIGINT NULL,
+      link_status VARCHAR(50) NOT NULL DEFAULT 'unlinked',
+      reason_for_confirmation VARCHAR(255) NULL,
+      raw_message TEXT NOT NULL,
+      parsed_fields_json JSON NOT NULL,
+      proposed_updates_json JSON NOT NULL,
+      needs_confirmation TINYINT(1) NOT NULL DEFAULT 1,
+      status VARCHAR(50) NOT NULL DEFAULT 'new',
+      reviewed_by VARCHAR(191) NULL,
+      reviewed_at DATETIME NULL,
+      applied_at DATETIME NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uniq_suggested_actions_source (source_type, source_chat_id, source_message_id),
+      KEY idx_suggested_actions_status (status),
+      KEY idx_suggested_actions_intent (intent),
+      KEY idx_suggested_actions_linked_job (linked_job_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
+function safeParseJson(value) {
+  if (!value) {
+    return {};
+  }
+
+  if (typeof value === "object") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (_error) {
+    return {};
+  }
+}
+
+async function listSuggestedActions(limit = 20) {
+  await ensureSuggestedActionsSchema();
+  const rows = await query(
+    `
+      SELECT
+        id,
+        source_type,
+        source_chat_id,
+        source_message_id,
+        source_user_id,
+        intent,
+        confidence,
+        linked_job_id,
+        linked_card_id,
+        link_status,
+        reason_for_confirmation,
+        raw_message,
+        parsed_fields_json,
+        proposed_updates_json,
+        needs_confirmation,
+        status,
+        reviewed_by,
+        reviewed_at,
+        applied_at,
+        created_at,
+        updated_at
+      FROM suggested_actions
+      WHERE status IN ('new', 'applied')
+        AND (status = 'new' OR (status = 'applied' AND reviewed_by = 'karen-auto' AND applied_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)))
+      ORDER BY
+        CASE status WHEN 'new' THEN 0 ELSE 1 END,
+        updated_at DESC, id DESC
+      LIMIT ?
+    `,
+    [Number(limit) || 20]
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    parsed_fields: safeParseJson(row.parsed_fields_json),
+    proposed_updates: safeParseJson(row.proposed_updates_json),
+  }));
+}
+
+async function createOrUpdateSuggestedAction(payload) {
+  await ensureSuggestedActionsSchema();
+
+  const sourceType = String(payload.source_type || "telegram").trim() || "telegram";
+  const sourceChatId =
+    payload.source_chat_id === null || payload.source_chat_id === undefined || payload.source_chat_id === ""
+      ? null
+      : Number(payload.source_chat_id);
+  const sourceMessageId =
+    payload.source_message_id === null || payload.source_message_id === undefined || payload.source_message_id === ""
+      ? null
+      : Number(payload.source_message_id);
+  const sourceUserId =
+    payload.source_user_id === null || payload.source_user_id === undefined || payload.source_user_id === ""
+      ? null
+      : Number(payload.source_user_id);
+  const confidence = Number(payload.confidence || 0);
+  const linkedJobId =
+    payload.linked_job_id === null || payload.linked_job_id === undefined || payload.linked_job_id === ""
+      ? null
+      : Number(payload.linked_job_id);
+  const linkedCardId =
+    payload.linked_card_id === null || payload.linked_card_id === undefined || payload.linked_card_id === ""
+      ? null
+      : Number(payload.linked_card_id);
+  const parsedFieldsJson = JSON.stringify(payload.parsed_fields || payload.fields || {});
+  const proposedUpdatesJson = JSON.stringify(payload.proposed_updates || {});
+  const nextStatus = String(payload.status || "new");
+
+  const recentRows = await query(
+    `
+      SELECT id
+      FROM suggested_actions
+      WHERE source_type = ?
+        AND status = 'new'
+        AND ((source_chat_id IS NULL AND ? IS NULL) OR source_chat_id = ?)
+        AND ((source_user_id IS NULL AND ? IS NULL) OR source_user_id = ?)
+        AND updated_at >= DATE_SUB(NOW(), INTERVAL 20 MINUTE)
+      ORDER BY updated_at DESC, id DESC
+      LIMIT 1
+    `,
+    [
+      sourceType,
+      Number.isFinite(sourceChatId) ? sourceChatId : null,
+      Number.isFinite(sourceChatId) ? sourceChatId : null,
+      Number.isFinite(sourceUserId) ? sourceUserId : null,
+      Number.isFinite(sourceUserId) ? sourceUserId : null,
+    ]
+  );
+
+  if (recentRows[0]) {
+    await query(
+      `
+        UPDATE suggested_actions
+        SET
+          source_message_id = ?,
+          intent = ?,
+          confidence = ?,
+          linked_job_id = ?,
+          linked_card_id = ?,
+          link_status = ?,
+          reason_for_confirmation = ?,
+          raw_message = ?,
+          parsed_fields_json = ?,
+          proposed_updates_json = ?,
+          needs_confirmation = ?,
+          status = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        LIMIT 1
+      `,
+      [
+        Number.isFinite(sourceMessageId) ? sourceMessageId : null,
+        String(payload.intent || "unknown"),
+        Number.isFinite(confidence) ? confidence : 0,
+        Number.isFinite(linkedJobId) ? linkedJobId : null,
+        Number.isFinite(linkedCardId) ? linkedCardId : null,
+        String(payload.link_status || "unlinked"),
+        payload.reason_for_confirmation ? String(payload.reason_for_confirmation) : null,
+        String(payload.raw_message || ""),
+        parsedFieldsJson,
+        proposedUpdatesJson,
+        payload.needs_confirmation ? 1 : 0,
+        nextStatus,
+        recentRows[0].id,
+      ]
+    );
+    return recentRows[0];
+  }
+
+  await query(
+    `
+      INSERT INTO suggested_actions (
+        source_type,
+        source_chat_id,
+        source_message_id,
+        source_user_id,
+        intent,
+        confidence,
+        linked_job_id,
+        linked_card_id,
+        link_status,
+        reason_for_confirmation,
+        raw_message,
+        parsed_fields_json,
+        proposed_updates_json,
+        needs_confirmation,
+        status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        source_user_id = VALUES(source_user_id),
+        intent = VALUES(intent),
+        confidence = VALUES(confidence),
+        linked_job_id = VALUES(linked_job_id),
+        linked_card_id = VALUES(linked_card_id),
+        link_status = VALUES(link_status),
+        reason_for_confirmation = VALUES(reason_for_confirmation),
+        raw_message = VALUES(raw_message),
+        parsed_fields_json = VALUES(parsed_fields_json),
+        proposed_updates_json = VALUES(proposed_updates_json),
+        needs_confirmation = VALUES(needs_confirmation),
+        status = VALUES(status),
+        updated_at = CURRENT_TIMESTAMP
+    `,
+    [
+      sourceType,
+      Number.isFinite(sourceChatId) ? sourceChatId : null,
+      Number.isFinite(sourceMessageId) ? sourceMessageId : null,
+      Number.isFinite(sourceUserId) ? sourceUserId : null,
+      String(payload.intent || "unknown"),
+      Number.isFinite(confidence) ? confidence : 0,
+      Number.isFinite(linkedJobId) ? linkedJobId : null,
+      Number.isFinite(linkedCardId) ? linkedCardId : null,
+      String(payload.link_status || "unlinked"),
+      payload.reason_for_confirmation ? String(payload.reason_for_confirmation) : null,
+      String(payload.raw_message || ""),
+      parsedFieldsJson,
+      proposedUpdatesJson,
+      payload.needs_confirmation ? 1 : 0,
+      nextStatus,
+    ]
+  );
+
+  const rows = await query(
+    `
+      SELECT id
+      FROM suggested_actions
+      WHERE source_type = ?
+        AND ((source_chat_id IS NULL AND ? IS NULL) OR source_chat_id = ?)
+        AND ((source_message_id IS NULL AND ? IS NULL) OR source_message_id = ?)
+      LIMIT 1
+    `,
+    [
+      sourceType,
+      Number.isFinite(sourceChatId) ? sourceChatId : null,
+      Number.isFinite(sourceChatId) ? sourceChatId : null,
+      Number.isFinite(sourceMessageId) ? sourceMessageId : null,
+      Number.isFinite(sourceMessageId) ? sourceMessageId : null,
+    ]
+  );
+
+  return rows[0] || null;
+}
+
+async function updateSuggestedActionStatus(id, status, reviewedBy) {
+  await ensureSuggestedActionsSchema();
+  await query(
+    `
+      UPDATE suggested_actions
+      SET
+        status = ?,
+        reviewed_by = ?,
+        reviewed_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [String(status || "new"), reviewedBy ? String(reviewedBy) : null, Number(id)]
+  );
+}
+
+
+async function fetchSuggestedActionById(id) {
+  await ensureSuggestedActionsSchema();
+  const rows = await query(
+    `
+      SELECT
+        id,
+        intent,
+        linked_job_id,
+        linked_card_id,
+        link_status,
+        reason_for_confirmation,
+        raw_message,
+        parsed_fields_json,
+        proposed_updates_json,
+        needs_confirmation,
+        status
+      FROM suggested_actions
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [Number(id)]
+  );
+
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    ...row,
+    parsed_fields: safeParseJson(row.parsed_fields_json),
+    proposed_updates: safeParseJson(row.proposed_updates_json),
+  };
+}
+
+
 function formatAmount(value) {
   if (value === null || value === undefined) {
     return "-";
@@ -260,6 +667,24 @@ function formatAmount(value) {
   }
 
   return `EUR ${parsed.toFixed(2)}`;
+}
+
+function formatDateTimeFieldValue(value) {
+  if (!value) {
+    return "";
+  }
+
+  const dt = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(dt.getTime())) {
+    return "";
+  }
+
+  const year = dt.getFullYear();
+  const month = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  const hours = String(dt.getHours()).padStart(2, "0");
+  const minutes = String(dt.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function extractCity(address) {
@@ -411,6 +836,7 @@ async function buildDashboardPayload() {
     queue,
     jobs,
     appointments,
+    appointments_preview: buildUpcomingPreview(appointments),
     technicians,
     map: {
       center: { lat: 50.85, lon: 4.35 },
@@ -454,13 +880,13 @@ async function buildJobDetailPayload(id) {
   const documents = [];
   if (latestAppointment) {
     documents.push({
-      name: `Appointment · ${formatAfspraakType(latestAppointment.afspraak_type)}`,
+      name: `Appointment Â· ${formatAfspraakType(latestAppointment.afspraak_type)}`,
       verified: latestAppointment.status || "-",
     });
   }
   if (job.invoice_number) {
     documents.push({
-      name: `Invoice · ${job.invoice_number}`,
+      name: `Invoice Â· ${job.invoice_number}`,
       verified: "linked",
     });
   } else if (["partial", "paid_full", "waiting_confirmation"].includes(job.payment_status)) {
@@ -478,7 +904,7 @@ async function buildJobDetailPayload(id) {
   };
   const assignmentOptions = (await fetchPlanningTechnicians()).map((technician) => ({
     value: technician.tg_id,
-    label: `${technician.full_name} · ${technician.tech_key || "-"}`,
+    label: `${technician.full_name} Â· ${technician.tech_key || "-"}`,
   }));
   const statusOptions = [
     { value: "new", label: formatStatus("new") },
@@ -489,13 +915,32 @@ async function buildJobDetailPayload(id) {
     { value: "completed", label: formatStatus("completed") },
     { value: "cancelled", label: formatStatus("cancelled") },
   ];
+  const appointmentTypeOptions = [
+    { value: "material", label: formatAfspraakType("material") },
+    { value: "second_visit", label: formatAfspraakType("second_visit") },
+    { value: "nazorg", label: formatAfspraakType("nazorg") },
+    { value: "other", label: formatAfspraakType("other") },
+  ];
+  const appointmentStatusOptions = [
+    { value: "scheduled", label: "Gepland" },
+    { value: "completed", label: "Afgerond" },
+    { value: "cancelled", label: "Geannuleerd" },
+  ];
   const actions = {
     assign_label: job.technician ? "Reassign technician" : "Assign technician",
-    status_label: `Update status · ${job.status_label}`,
+    status_label: `Update status Â· ${job.status_label}`,
     status_value: job.status,
     status_options: statusOptions,
     technician_value: job.technician_id,
     assignment_options: assignmentOptions,
+    appointment: {
+      label: latestAppointment ? "Appointment aanpassen" : "Appointment plannen",
+      scheduled_at_value: formatDateTimeFieldValue(latestAppointment?.scheduled_at),
+      type_value: latestAppointment?.afspraak_type || "material",
+      status_value: latestAppointment?.status || "scheduled",
+      type_options: appointmentTypeOptions,
+      status_options: appointmentStatusOptions,
+    },
   };
 
   return {
@@ -528,12 +973,24 @@ async function buildJobDetailPayload(id) {
 
 module.exports = {
   assignJobTechnician,
+  autoApplySuggestedAction,
   buildDashboardPayload,
   buildJobsPayload,
   buildJobDetailPayload,
+  createOrUpdateSuggestedAction,
+  ensureSuggestedActionsSchema,
+  fetchSuggestedActionById,
   fetchUserById,
   fetchUserByTechKey,
+  findJobByChatId,
+  FORCE_CONFIRM_INTENTS,
   fetchPlanningJobs,
   fetchPlanningTechnicians,
+  listSuggestedActions,
+  SAFE_AUTO_APPLY_INTENTS,
+  updateJobAppointment,
   updateJobStatus,
+  updateSuggestedActionStatus,
 };
+
+

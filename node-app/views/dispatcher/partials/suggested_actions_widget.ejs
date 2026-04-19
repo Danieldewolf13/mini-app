@@ -1,0 +1,48 @@
+<section class="panel suggested-actions-panel">
+  <div class="section-head">
+    <div>
+      <p class="section-kicker">Karen inbox</p>
+      <h2>Nieuwe voorstellen</h2>
+    </div>
+    <span class="section-meta"><%= suggestedActions.filter(a => a.status === 'new').length %> open</span>
+  </div>
+
+  <% if (suggestedActions.length) { %>
+    <div class="suggested-actions-list">
+      <% suggestedActions.slice(0, 15).forEach((item) => { %>
+        <article class="suggested-action-card status-<%= item.status %>">
+          <div class="suggested-action-topline">
+            <div>
+              <strong><%= item.intent %></strong>
+              <% if (item.linked_job_id) { %><span class="sa-job-link">→ Job #<%= item.linked_job_id %></span><% } %>
+            </div>
+            <% if (item.status === 'applied' && item.reviewed_by === 'karen-auto') { %>
+              <span class="sa-badge sa-badge--auto">Karen</span>
+            <% } else if (item.status === 'new') { %>
+              <span class="sa-badge sa-badge--pending">Open</span>
+            <% } %>
+          </div>
+          <p class="suggested-action-message"><%= item.raw_message %></p>
+          <div class="suggested-action-meta">
+            <span><%= item.link_status %> · <%= Number(item.confidence || 0).toFixed(0) %>%</span>
+            <% if (item.reason_for_confirmation) { %>
+              <span class="sa-reason"><%= item.reason_for_confirmation %></span>
+            <% } %>
+          </div>
+          <% if (item.status === 'new') { %>
+            <div class="suggested-action-controls">
+              <form method="post" action="/dispatcher/suggested-actions/<%= item.id %>/confirm" style="display:inline">
+                <button type="submit" class="inline-button">Bevestigen</button>
+              </form>
+              <form method="post" action="/dispatcher/suggested-actions/<%= item.id %>/reject" style="display:inline">
+                <button type="submit" class="inline-button is-secondary">Verwerpen</button>
+              </form>
+            </div>
+          <% } %>
+        </article>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <p class="empty-state">Nog geen Karen-acties ontvangen.</p>
+  <% } %>
+</section>

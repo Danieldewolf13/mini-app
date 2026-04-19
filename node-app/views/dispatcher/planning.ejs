@@ -1,8 +1,45 @@
 <%
 const body = `
-<div class="planning-page">
+<div class="planning-page planning-page--workspace">
   ${include("./partials/planning_toolbar")}
   ${include("./partials/planning_grid")}
+  <div class="planning-support-row">
+    <aside class="planning-support-card">
+      <section class="panel planning-selection-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Planning focus</p>
+            <h2>Current view</h2>
+          </div>
+        </div>
+        <div id="planningSelectionSummary" class="planning-selection-grid">
+          <div>
+            <strong>View</strong>
+            <span id="planningSummaryView">Day</span>
+          </div>
+          <div>
+            <strong>Date</strong>
+            <span id="planningSummaryDate">-</span>
+          </div>
+          <div>
+            <strong>Technician filter</strong>
+            <span id="planningSummaryTechnician">All technicians</span>
+          </div>
+          <div>
+            <strong>Region filter</strong>
+            <span id="planningSummaryRegion">All regions</span>
+          </div>
+          <div class="planning-selection-grid-full">
+            <strong>Selected block</strong>
+            <span id="planningSummarySelection">Klik op een planningblok om de detailpanel te vullen.</span>
+          </div>
+        </div>
+      </section>
+    </aside>
+    <div class="planning-detail-card">
+      ${include("./partials/job_detail_panel")}
+    </div>
+  </div>
 </div>
 `; %>
 <%- include("../layout/base", { ...locals, body }) %>

@@ -3,6 +3,57 @@
   gap: 12px;
 }
 
+.planning-page--workspace {
+  min-width: 0;
+}
+
+.planning-support-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.62fr) minmax(0, 1.38fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+.planning-support-card,
+.planning-detail-card {
+  min-width: 0;
+}
+
+.planning-selection-panel {
+  padding: 12px 14px;
+}
+
+.planning-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.planning-selection-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-soft);
+  min-width: 0;
+}
+
+.planning-selection-grid strong {
+  font-size: 12px;
+}
+
+.planning-selection-grid span {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.planning-selection-grid-full {
+  grid-column: 1 / -1;
+}
+
 .planning-toolbar {
   display: flex;
   justify-content: space-between;
@@ -54,24 +105,24 @@
 
 .planning-board {
   overflow: hidden;
-  padding: 16px;
+  padding: 14px;
 }
 
 .planning-layout {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
 }
 
 .planning-header-technicians {
   display: grid;
-  grid-template-columns: repeat(var(--planning-columns, 1), minmax(180px, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
+  grid-template-columns: repeat(var(--planning-columns, 1), minmax(160px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .planning-tech-header {
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel-soft);
@@ -80,37 +131,38 @@
 
 .planning-tech-header strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 14px;
 }
 
 .planning-tech-header-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .planning-tech-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 8px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
   border-radius: 999px;
   background: rgba(41, 75, 143, 0.08);
   color: var(--blue);
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .planning-tech-progress {
-  height: 6px;
-  margin-bottom: 8px;
+  height: 5px;
+  margin-bottom: 6px;
   border-radius: 999px;
   background: rgba(41, 75, 143, 0.08);
   overflow: hidden;
@@ -126,11 +178,11 @@
 .planning-time-sidebar {
   display: grid;
   grid-auto-rows: 44px;
-  padding-top: 54px;
+  padding-top: 46px;
 }
 
 .planning-time-slot {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
 }
 
@@ -144,14 +196,14 @@
 
 .planning-grid {
   display: grid;
-  grid-template-columns: repeat(var(--planning-columns, 1), minmax(220px, 220px));
-  gap: 10px;
+  grid-template-columns: repeat(var(--planning-columns, 1), minmax(188px, 188px));
+  gap: 8px;
   min-width: max-content;
 }
 
 .planning-header-technicians {
   min-width: max-content;
-  grid-template-columns: repeat(var(--planning-columns, 1), minmax(220px, 220px));
+  grid-template-columns: repeat(var(--planning-columns, 1), minmax(188px, 188px));
 }
 
 .planning-column {
@@ -161,6 +213,54 @@
   border-radius: 16px;
   overflow: hidden;
   background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+}
+
+.planning-detail-card .job-detail {
+  padding: 14px;
+}
+
+.planning-detail-card .job-detail-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.planning-detail-card .detail-header h2 {
+  font-size: 18px;
+  line-height: 1.05;
+}
+
+.planning-detail-card .section h3 {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.planning-detail-card .detail-stack {
+  gap: 6px;
+}
+
+.planning-detail-card .detail-stack div {
+  padding: 8px 10px;
+}
+
+.planning-detail-card .detail-inline-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.planning-detail-card .detail-inline-form label {
+  min-width: 0;
+  flex: initial;
+}
+
+.planning-detail-card .detail-inline-form .inline-button {
+  justify-self: end;
+}
+
+.planning-detail-card .section-overview .detail-stack,
+.planning-detail-card .section-documents .detail-stack,
+.planning-detail-card .section-finance .detail-stack {
+  grid-template-columns: 1fr;
 }
 
 .planning-slot {
@@ -193,6 +293,11 @@
   box-shadow: 0 14px 24px rgba(24, 41, 73, 0.12);
 }
 
+.job-block.is-selected {
+  outline: 2px solid rgba(41, 75, 143, 0.42);
+  box-shadow: 0 0 0 3px rgba(41, 75, 143, 0.12), 0 16px 26px rgba(24, 41, 73, 0.14);
+}
+
 .job-block strong {
   display: block;
   margin-bottom: 2px;
@@ -221,13 +326,13 @@
 }
 
 .job-block.status-assigned {
-  background: linear-gradient(180deg, #e8f0ff 0%, #dbe8ff 100%);
-  color: #294b8f;
+  background: linear-gradient(180deg, #edf5ff 0%, #deebff 100%);
+  color: #29508f;
 }
 
 .job-block.status-in_progress {
-  background: linear-gradient(180deg, #e6f8ee 0%, #d5f1e2 100%);
-  color: #227949;
+  background: linear-gradient(180deg, #edf9f0 0%, #dcf4e5 100%);
+  color: #237748;
 }
 
 .job-block.status-completed,
@@ -238,27 +343,54 @@
 
 .job-block.status-unassigned,
 .job-block.status-waiting_dispatcher {
-  background: linear-gradient(180deg, #fff4d8 0%, #fcebb8 100%);
+  background: linear-gradient(180deg, #fff7e7 0%, #ffedc8 100%);
   color: #8a6714;
 }
 
 .job-block.status-on_the_way {
-  background: linear-gradient(180deg, #efe8ff 0%, #e2d7ff 100%);
-  color: #6544b6;
+  background: linear-gradient(180deg, #ecefff 0%, #e0e5ff 100%);
+  color: #5f4bb5;
 }
 
 .job-block.status-new,
 .job-block.status-waiting_confirmation {
-  background: linear-gradient(180deg, #fff1e4 0%, #ffe4cb 100%);
-  color: #9a5a1d;
+  background: linear-gradient(180deg, #fff1e7 0%, #ffe2cf 100%);
+  color: #a1591d;
 }
 
 .job-block.is-urgent {
-  outline: 2px solid #f2a94a;
+  outline: 2px solid #d85f4d;
 }
 
 .job-block.is-overdue {
   box-shadow: 0 0 0 2px rgba(199, 81, 81, 0.32);
+}
+
+.job-block.status-assigned .job-block-accent {
+  background: #3b73d9;
+}
+
+.job-block.status-on_the_way .job-block-accent {
+  background: #6b5dd3;
+}
+
+.job-block.status-in_progress .job-block-accent {
+  background: #2ea95a;
+}
+
+.job-block.status-unassigned .job-block-accent,
+.job-block.status-waiting_dispatcher .job-block-accent {
+  background: #d88922;
+}
+
+.job-block.status-new .job-block-accent,
+.job-block.status-waiting_confirmation .job-block-accent {
+  background: #d85f4d;
+}
+
+.job-block.status-completed .job-block-accent,
+.job-block.status-done .job-block-accent {
+  background: #7d8794;
 }
 
 .job-block.status-assigned small,
@@ -297,17 +429,25 @@
 }
 
 @media (max-width: 1000px) {
+  .planning-support-row {
+    grid-template-columns: 1fr;
+  }
+
   .planning-layout {
     grid-template-columns: 56px minmax(0, 1fr);
   }
 
   .planning-header-technicians,
   .planning-grid {
-    grid-template-columns: repeat(var(--planning-columns, 1), minmax(180px, 180px));
+    grid-template-columns: repeat(var(--planning-columns, 1), minmax(170px, 170px));
   }
 }
 
 @media (max-width: 768px) {
+  .planning-selection-grid {
+    grid-template-columns: 1fr;
+  }
+
   .planning-toolbar {
     padding: 12px;
   }
@@ -327,7 +467,7 @@
 
   .planning-header-technicians,
   .planning-grid {
-    grid-template-columns: repeat(var(--planning-columns, 1), minmax(160px, 160px));
+    grid-template-columns: repeat(var(--planning-columns, 1), minmax(150px, 150px));
     gap: 8px;
   }
 

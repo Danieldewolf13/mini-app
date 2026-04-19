@@ -12,7 +12,7 @@
   <div class="tech-list tech-preview">
     <% if (technicians.length) { %>
       <% technicians.slice(0, 6).forEach((tech) => { %>
-        <div class="tech-card <%= Number(tech.active_jobs) === 0 ? 'free' : 'busy' %>">
+        <div class="tech-card <%= Number(tech.active_jobs) === 0 ? 'free' : Number(tech.active_jobs) >= 3 ? 'loaded' : 'busy' %>">
           <div><%= tech.full_name %></div>
           <div><%= Number(tech.active_jobs) === 0 ? "Free" : `${tech.active_jobs} active` %></div>
           <div><%= tech.tech_key || tech.role %></div>

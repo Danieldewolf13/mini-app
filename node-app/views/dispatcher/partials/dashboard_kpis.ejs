@@ -1,17 +1,17 @@
 <section class="kpis">
-  <div class="kpi">
+  <div class="kpi kpi-action <%= Number(kpis.requires_action || 0) > 0 ? 'is-hot' : 'is-calm' %>">
     <span class="kpi-label"><%= t("dashboard.kpi.action", "Action") %></span>
     <strong><%= kpis.requires_action %></strong>
   </div>
-  <div class="kpi">
+  <div class="kpi kpi-urgent <%= Number(kpis.urgent || 0) > 0 ? 'is-hot' : 'is-calm' %>">
     <span class="kpi-label"><%= t("dashboard.kpi.urgent", "Urgent") %></span>
     <strong><%= kpis.urgent %></strong>
   </div>
-  <div class="kpi">
+  <div class="kpi kpi-free-tech <%= Number(kpis.free_tech || 0) > 0 ? 'is-good' : 'is-low' %>">
     <span class="kpi-label"><%= t("dashboard.kpi.free_tech", "Free tech") %></span>
     <strong><%= kpis.free_tech %></strong>
   </div>
-  <div class="kpi">
+  <div class="kpi kpi-upcoming <%= Number(kpis.upcoming || 0) > 0 ? 'is-info' : 'is-calm' %>">
     <span class="kpi-label"><%= t("dashboard.kpi.next_appointments", "Next appointments") %></span>
     <strong><%= kpis.upcoming %></strong>
   </div>

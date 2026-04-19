@@ -7,12 +7,16 @@ const modulePartials = {
   appointments: "./partials/appointments_widget",
 };
 
-function renderWorkspaceModule(moduleKey, zoneClass) {
+const workspaceOrder = [layout.slots.left, layout.slots.center, layout.slots.sideTop, layout.slots.sideBottom].filter(
+  (value, index, array) => array.indexOf(value) === index
+);
+
+function renderWorkspaceModule(moduleKey) {
   if (!layout.visible[moduleKey]) {
     return "";
   }
 
-  return `<div class="workspace-zone ${zoneClass} workspace-zone-${moduleKey}">${include(modulePartials[moduleKey])}</div>`;
+  return `<div class="workspace-zone workspace-zone-${moduleKey}">${include(modulePartials[moduleKey])}</div>`;
 }
 
 const body = `
@@ -21,22 +25,26 @@ const body = `
     ${include("./partials/dashboard_kpis")}
   </section>
 
-  <section class="dashboard-row dashboard-row-workspace">
-    ${renderWorkspaceModule(layout.slots.left, "workspace-zone-left")}
 
-    ${renderWorkspaceModule(layout.slots.center, "workspace-zone-center")}
+  ${
+    currentUser && currentUser.role !== "technician"
+      ? `
+        <section class="dashboard-row dashboard-row-suggested-actions">
+          ${include("./partials/suggested_actions_widget")}
+        </section>
+      `
+      : ``
+  }
 
-    ${
-      layout.visible.technicians || layout.visible.appointments
-        ? `
-          <div class="workspace-zone workspace-zone-side">
-            ${layout.visible[layout.slots.sideTop] ? include(modulePartials[layout.slots.sideTop]) : ""}
-            ${layout.visible[layout.slots.sideBottom] ? include(modulePartials[layout.slots.sideBottom]) : ""}
-          </div>
-        `
-        : ``
-    }
-  </section>
+  ${
+    workspaceOrder.some((moduleKey) => layout.visible[moduleKey])
+      ? `
+        <section class="dashboard-row dashboard-row-workspace dashboard-row-workspace-inline">
+          ${workspaceOrder.map((moduleKey) => renderWorkspaceModule(moduleKey)).join("")}
+        </section>
+      `
+      : ``
+  }
 
   ${
     layout.visible.detail

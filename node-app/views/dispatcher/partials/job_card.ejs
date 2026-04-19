@@ -1,5 +1,5 @@
 <div
-  class="job-card"
+  class="job-card job-card-status-<%= job.status %>"
   data-job-id="<%= job.id %>"
   data-id="<%= job.id %>"
   data-status="<%= job.status %>"
@@ -12,7 +12,7 @@
       <strong>#<%= job.id %></strong>
       <p><%= job.client %></p>
     </div>
-    <span class="status-pill"><%= job.status_label %></span>
+    <span class="status-pill status-pill-<%= job.status %>"><%= job.status_label %></span>
   </div>
   <div class="job-card-body">
     <span><%= job.city || "-" %></span>

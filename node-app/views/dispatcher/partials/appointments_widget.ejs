@@ -8,16 +8,20 @@
   </div>
 
   <div class="appointment-list compact-list appointments-preview">
-    <% if (appointments.length) { %>
-      <% appointments.slice(0, 5).forEach((appt) => { %>
-        <button class="appointment-card" type="button" data-job-id="<%= appt.id %>">
+    <% const now = Date.now(); %>
+    <% const previewAppointments = (typeof appointments_preview !== "undefined" && appointments_preview?.length) ? appointments_preview : appointments.slice(0, 4); %>
+    <% if (previewAppointments.length) { %>
+      <% previewAppointments.forEach((appt) => { %>
+        <% const scheduledAtTs = new Date(appt.scheduled_at).getTime(); %>
+        <% const isSoon = !Number.isNaN(scheduledAtTs) && scheduledAtTs <= now + (4 * 60 * 60 * 1000); %>
+        <button class="appointment-card <%= isSoon ? 'soon' : 'planned' %> <%= !appt.technician_name ? 'needs-assignment' : '' %>" type="button" data-job-id="<%= appt.id %>">
           <strong><%= appt.scheduled_at_label %></strong>
           <p>#<%= appt.id %> - <%= appt.client_name || "-" %></p>
           <p class="muted"><%= appt.technician_name || "Unassigned" %> - <%= appt.afspraak_type_label || "-" %></p>
         </button>
       <% }) %>
     <% } else { %>
-      <p class="empty-state">Geen afspraken in de komende twee dagen.</p>
+      <p class="empty-state">Geen activiteiten in de komende vier uur.</p>
     <% } %>
   </div>
 </section>

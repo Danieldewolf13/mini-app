@@ -1,19 +1,27 @@
 <%
 const body = `
-<div class="jobs-page">
+<div class="jobs-page jobs-page--workspace">
   ${include("./partials/jobs_filters")}
-  <section class="panel jobs-table-panel">
-    <div class="section-head">
-      <div>
-        <p class="section-kicker">Jobs</p>
-        <h2>Dispatcher jobs</h2>
-      </div>
-      <span class="section-meta">${jobs.length} zichtbaar</span>
+  <div class="jobs-workspace">
+    <div class="jobs-workspace-main">
+      <section class="panel jobs-table-panel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Jobs</p>
+            <h2>Dispatcher jobs</h2>
+          </div>
+          <span class="section-meta">${jobs.length} zichtbaar</span>
+        </div>
+        <div id="jobsTable" class="jobs-list">
+          ${jobs.length ? jobs.map((job) => include("./partials/job_card", { job })).join("") : `<p class="empty-state">Nog geen jobs gevonden in deze mini-app database.</p>`}
+        </div>
+      </section>
     </div>
-    <div id="jobsTable" class="jobs-list">
-      ${jobs.length ? jobs.map((job) => include("./partials/job_card", { job })).join("") : `<p class="empty-state">Nog geen jobs gevonden in deze mini-app database.</p>`}
-    </div>
-  </section>
+
+    <aside class="jobs-workspace-detail">
+      ${include("./partials/job_detail_panel")}
+    </aside>
+  </div>
 </div>
 `; %>
-<%- include("../layout/base", { ...locals, body, rightPanel: "dispatcher/partials/job_detail_panel" }) %>
+<%- include("../layout/base", { ...locals, body }) %>

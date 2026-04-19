@@ -7,10 +7,10 @@ const defaultMapView = { center: [50.85, 4.35], zoom: 8 };
 let mapInteractionEnabled = false;
 
 function setupSidebarToggle() {
-  const toggle = document.getElementById("sidebarToggle");
+  const toggles = Array.from(document.querySelectorAll("[data-sidebar-toggle]"));
   const shell = document.querySelector(".app-shell");
 
-  if (!toggle || !shell) {
+  if (!toggles.length || !shell) {
     return;
   }
 
@@ -18,7 +18,9 @@ function setupSidebarToggle() {
 
   function applyState(collapsed) {
     shell.classList.toggle("sidebar-collapsed", collapsed);
-    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    toggles.forEach((toggle) => {
+      toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    });
   }
 
   try {
@@ -32,14 +34,16 @@ function setupSidebarToggle() {
     applyState(window.innerWidth <= 900);
   }
 
-  toggle.addEventListener("click", () => {
-    const collapsed = !shell.classList.contains("sidebar-collapsed");
-    applyState(collapsed);
-    try {
-      window.localStorage.setItem(storageKey, collapsed ? "1" : "0");
-    } catch (error) {
-      // ignore storage issues and keep UI functional
-    }
+  toggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const collapsed = !shell.classList.contains("sidebar-collapsed");
+      applyState(collapsed);
+      try {
+        window.localStorage.setItem(storageKey, collapsed ? "1" : "0");
+      } catch (error) {
+        // ignore storage issues and keep UI functional
+      }
+    });
   });
 }
 
