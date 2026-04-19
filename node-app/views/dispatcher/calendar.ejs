@@ -1,0 +1,34 @@
+<%
+const body = `
+<div class="calendar-page">
+  <div class="calendar-toolbar">
+    <div class="calendar-toolbar-left">
+      <button class="inline-button is-secondary" id="calPrevMonth" type="button">&#8249;</button>
+      <h2 id="calMonthLabel" class="calendar-month-label"></h2>
+      <button class="inline-button is-secondary" id="calNextMonth" type="button">&#8250;</button>
+    </div>
+    <div class="calendar-toolbar-right">
+      <button class="inline-button is-secondary" id="calTodayBtn" type="button">Vandaag</button>
+      <select id="calTechFilter" class="filter-select">
+        <option value="">Alle techniekers</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="calendar-body">
+    <div class="calendar-grid" id="calGrid">
+      <!-- days injected by JS -->
+    </div>
+
+    <aside class="calendar-detail" id="calDetail">
+      <div class="calendar-detail-inner">
+        <p class="section-kicker" id="calDetailDate">Selecteer een dag</p>
+        <div id="calDetailItems" class="cal-items-list">
+          <p class="empty-state">Klik op een dag om afspraken te zien.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+`; %>
+<%- include("../layout/base", { ...locals, body }) %>

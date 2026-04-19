@@ -635,7 +635,18 @@ app.get("/dispatcher/planning", requireAuthPage, requireNavAccess("planning"), (
 });
 
 app.get("/dispatcher/calendar", requireAuthPage, requireNavAccess("calendar"), (req, res) => {
-  res.redirect("/dispatcher/planning");
+  res.render(
+    "dispatcher/calendar",
+    baseViewModel({
+      pageTitle: "Kalender",
+      activeNav: "calendar",
+      contentClass: "content--fullwidth",
+      extraStyles: ["/static/css/calendar.css?v=1"],
+      extraScripts: ["/static/js/calendar.js?v=1"],
+      currentUser: serializeUser(req.authUser),
+      currentPreferences: req.userPreferences,
+    })
+  );
 });
 
 app.get("/dispatcher/technicians", requireAuthPage, requireNavAccess("technicians"), (req, res) => {

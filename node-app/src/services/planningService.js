@@ -80,6 +80,7 @@ function buildTechnicians(rawTechnicians, jobs) {
     return {
       id: tech.tg_id,
       name: tech.full_name,
+      tech_key: tech.tech_key || null,
       status: activeCount > 0 ? "busy" : "available",
       region,
       role: tech.role,
