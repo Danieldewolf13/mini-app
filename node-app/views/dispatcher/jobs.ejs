@@ -10,10 +10,15 @@ const body = `
             <p class="section-kicker">Jobs</p>
             <h2>Dispatcher jobs</h2>
           </div>
-          <span class="section-meta">${jobs.length} zichtbaar</span>
+          <div class="section-head-actions">
+            <span class="section-meta" data-visible-count>${jobs.length} zichtbaar</span>
+            ${currentUser && currentUser.role !== 'technician' ? `
+              <button class="inline-button" type="button" id="openNewJobModal">+ Nieuwe job</button>
+            ` : ''}
+          </div>
         </div>
         <div id="jobsTable" class="jobs-list">
-          ${jobs.length ? jobs.map((job) => include("./partials/job_card", { job })).join("") : `<p class="empty-state">Nog geen jobs gevonden in deze mini-app database.</p>`}
+          ${jobs.length ? jobs.map((job) => include("./partials/job_card", { job })).join("") : `<p class="empty-state">Nog geen jobs gevonden.</p>`}
         </div>
       </section>
     </div>
@@ -21,6 +26,59 @@ const body = `
     <aside class="jobs-workspace-detail">
       ${include("./partials/job_detail_panel")}
     </aside>
+  </div>
+</div>
+
+<!-- Nieuwe job modaal -->
+<div id="newJobModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="newJobModalTitle">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 id="newJobModalTitle">Nieuwe job</h2>
+      <button class="modal-close" type="button" id="closeNewJobModal" aria-label="Sluiten">&times;</button>
+    </div>
+    <form id="newJobForm" class="modal-form">
+      <label class="field">
+        <span>Adres <span class="required">*</span></span>
+        <input type="text" name="address" id="njAddress" placeholder="Straat 12, 9000 Gent" required autocomplete="off">
+      </label>
+      <div class="form-row">
+        <label class="field">
+          <span>Klant</span>
+          <input type="text" name="client_name" id="njClient" placeholder="Naam klant" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>Telefoon</span>
+          <input type="tel" name="phone" id="njPhone" placeholder="04xx xx xx xx" autocomplete="off">
+        </label>
+      </div>
+      <div class="form-row">
+        <label class="field">
+          <span>Categorie</span>
+          <select name="category" id="njCategory">
+            <option value="Dringend">Dringend</option>
+            <option value="Afspraak">Afspraak</option>
+            <option value="Corporatie">Corporatie</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Type</span>
+          <select name="problem_type" id="njProblemType">
+            <option value="Buitengesloten">Buitengesloten</option>
+            <option value="Slot vervangen">Slot vervangen</option>
+            <option value="Slot herstellen">Slot herstellen</option>
+            <option value="Cilinderwissel">Cilinderwissel</option>
+            <option value="Deur herstellen">Deur herstellen</option>
+            <option value="Waterlek">Waterlek</option>
+            <option value="Andere">Andere</option>
+          </select>
+        </label>
+      </div>
+      <div id="newJobFeedback" class="form-feedback"></div>
+      <div class="form-actions">
+        <button type="submit" class="inline-button" id="newJobSubmit">Job aanmaken</button>
+        <button type="button" class="inline-button is-secondary" id="cancelNewJob">Annuleren</button>
+      </div>
+    </form>
   </div>
 </div>
 `; %>

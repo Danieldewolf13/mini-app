@@ -303,3 +303,72 @@ async function loadJobDetail(id) {
 }
 
 window.loadJobDetail = loadJobDetail;
+
+// ── Nieuwe job modaal ──────────────────────────────────────────────────────
+(function () {
+  function openModal() {
+    const modal = document.getElementById("newJobModal");
+    if (modal) {
+      modal.classList.remove("hidden");
+      document.getElementById("njAddress")?.focus();
+    }
+  }
+
+  function closeModal() {
+    const modal = document.getElementById("newJobModal");
+    if (modal) modal.classList.add("hidden");
+    const form = document.getElementById("newJobForm");
+    if (form) form.reset();
+    const fb = document.getElementById("newJobFeedback");
+    if (fb) { fb.textContent = ""; fb.className = "form-feedback"; }
+  }
+
+  document.addEventListener("click", (e) => {
+    if (e.target.id === "openNewJobModal") openModal();
+    if (e.target.id === "closeNewJobModal" || e.target.id === "cancelNewJob") closeModal();
+    if (e.target.id === "newJobModal") closeModal(); // click backdrop
+  });
+
+  document.addEventListener("submit", async (e) => {
+    if (e.target.id !== "newJobForm") return;
+    e.preventDefault();
+
+    const form = e.target;
+    const submit = document.getElementById("newJobSubmit");
+    const fb = document.getElementById("newJobFeedback");
+
+    submit.disabled = true;
+    submit.textContent = "Bezig...";
+    if (fb) { fb.textContent = ""; fb.className = "form-feedback"; }
+
+    const body = Object.fromEntries(new FormData(form).entries());
+
+    try {
+      const resp = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json().catch(() => ({}));
+
+      if (!resp.ok) {
+        if (fb) { fb.textContent = data.error || "Aanmaken mislukt"; fb.className = "form-feedback form-feedback--error"; }
+        return;
+      }
+
+      closeModal();
+      // Reload job list after short delay
+      setTimeout(() => window.location.reload(), 300);
+    } catch (err) {
+      if (fb) { fb.textContent = err.message || "Verbindingsfout"; fb.className = "form-feedback form-feedback--error"; }
+    } finally {
+      submit.disabled = false;
+      submit.textContent = "Job aanmaken";
+    }
+  });
+
+  // Close on Escape
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModal();
+  });
+})();

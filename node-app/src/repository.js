@@ -310,7 +310,12 @@ const FORCE_CONFIRM_INTENTS = new Set([
   "cancel_job_request",
 ]);
 
+// Job creation intents — Karen assumes these are always correct (no confirmation)
+const JOB_CREATE_INTENTS = new Set(["create_urgent_job", "create_scheduled_job"]);
+
 const SAFE_AUTO_APPLY_INTENTS = new Set([
+  "create_urgent_job",
+  "create_scheduled_job",
   "update_status",
   "stalled_job_flag",
 ]);
@@ -324,21 +329,81 @@ async function findJobByChatId(chatId) {
   return rows[0] || null;
 }
 
-async function autoApplySuggestedAction(id, intent, proposedUpdates, linkedJobId) {
+async function createQuickJob({ address, clientName, phone, category, problemType, createdBy, groupChatId }) {
+  const safePhone = (phone || "-").trim() || "-";
+  const safeName = (clientName || "...").trim() || "...";
+  const safeCategory = (category || "Dringend").trim();
+  const safeProblem = (problemType || "Onbekend").trim();
+  const safeAddress = (address || "").trim();
+
+  await query(
+    `INSERT INTO clients (phone, client_name, client_type) VALUES (?, ?, 'private')`,
+    [safePhone, safeName]
+  );
+  const [{ "LAST_INSERT_ID()": clientId }] = await query(`SELECT LAST_INSERT_ID()`);
+
+  await query(
+    `INSERT INTO cards (client_id, category, problem_type, address_raw, status, created_by, group_chat_id)
+     VALUES (?, ?, ?, ?, 'new', ?, ?)`,
+    [clientId, safeCategory, safeProblem, safeAddress, createdBy || 0, groupChatId || null]
+  );
+  const [{ "LAST_INSERT_ID()": cardId }] = await query(`SELECT LAST_INSERT_ID()`);
+  return Number(cardId);
+}
+
+// Takes only the suggested_action id — fetches everything it needs from DB
+async function autoApplySuggestedAction(id) {
+  const rows = await query(
+    `SELECT id, intent, linked_job_id, source_chat_id, source_user_id, parsed_fields_json, proposed_updates_json
+     FROM suggested_actions WHERE id = ? LIMIT 1`,
+    [Number(id)]
+  );
+  const action = rows[0];
+  if (!action) return false;
+
+  const intent = action.intent;
   if (!SAFE_AUTO_APPLY_INTENTS.has(intent)) return false;
+
+  const parsedFields = safeParseJson(action.parsed_fields_json);
+  const proposedUpdates = safeParseJson(action.proposed_updates_json);
+  const linkedJobId = action.linked_job_id ? Number(action.linked_job_id) : null;
+
+  if (JOB_CREATE_INTENTS.has(intent)) {
+    const address = (parsedFields.address || "").trim();
+    if (!address) return false; // can't create a job without an address
+
+    const cardId = await createQuickJob({
+      address,
+      clientName: parsedFields.customer_name,
+      phone: parsedFields.phone,
+      category: intent === "create_scheduled_job" ? "Afspraak" : "Dringend",
+      problemType: parsedFields.problem_type,
+      createdBy: action.source_user_id,
+      groupChatId: action.source_chat_id,
+    });
+
+    await query(
+      `UPDATE suggested_actions
+       SET status = 'applied', linked_job_id = ?, linked_card_id = ?, link_status = 'exact',
+           reviewed_by = 'karen-auto', applied_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? LIMIT 1`,
+      [cardId, cardId, Number(id)]
+    );
+    return cardId;
+  }
+
   if (!linkedJobId) return false;
 
   if (intent === "stalled_job_flag") {
     await updateJobStatus(linkedJobId, "waiting_dispatcher");
   } else if (intent === "update_status") {
     const newStatus = proposedUpdates?.job_status;
-    if (newStatus) {
-      await updateJobStatus(linkedJobId, newStatus);
-    }
+    if (newStatus) await updateJobStatus(linkedJobId, newStatus);
   }
 
   await query(
-    `UPDATE suggested_actions SET status = 'applied', reviewed_by = 'karen-auto', applied_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? LIMIT 1`,
+    `UPDATE suggested_actions SET status = 'applied', reviewed_by = 'karen-auto',
+     applied_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? LIMIT 1`,
     [Number(id)]
   );
   return true;
@@ -978,12 +1043,14 @@ module.exports = {
   buildJobsPayload,
   buildJobDetailPayload,
   createOrUpdateSuggestedAction,
+  createQuickJob,
   ensureSuggestedActionsSchema,
   fetchSuggestedActionById,
   fetchUserById,
   fetchUserByTechKey,
   findJobByChatId,
   FORCE_CONFIRM_INTENTS,
+  JOB_CREATE_INTENTS,
   fetchPlanningJobs,
   fetchPlanningTechnicians,
   listSuggestedActions,

@@ -8,11 +8,13 @@ const {
   buildJobsPayload,
   buildJobDetailPayload,
   createOrUpdateSuggestedAction,
+  createQuickJob,
   ensureSuggestedActionsSchema,
   fetchPlanningTechnicians,
   fetchSuggestedActionById,
   findJobByChatId,
   FORCE_CONFIRM_INTENTS,
+  JOB_CREATE_INTENTS,
   listSuggestedActions,
   SAFE_AUTO_APPLY_INTENTS,
   updateJobAppointment,
@@ -823,20 +825,20 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
   const result = req.body && typeof req.body === "object" ? req.body : {};
   const intent = String(result.intent || "unknown");
 
-  // Smart auto-linking: use chat_id to find the active job for this Telegram group
+  // Job creation is always assumed correct — no confirmation needed
+  // For other intents: try to auto-link via group chat_id
   let linkedJobId = result.linked_job_id ? Number(result.linked_job_id) : null;
   let linkStatus = result.link_status || "unlinked";
-  let needsConfirmation = result.needs_confirmation !== false;
+  let needsConfirmation = FORCE_CONFIRM_INTENTS.has(intent);
 
-  if (!linkedJobId && result.source_chat_id) {
+  if (!JOB_CREATE_INTENTS.has(intent) && !linkedJobId && result.source_chat_id) {
     try {
       const job = await findJobByChatId(result.source_chat_id);
       if (job) {
         linkedJobId = job.id;
         linkStatus = "exact";
-        if (!FORCE_CONFIRM_INTENTS.has(intent)) {
-          needsConfirmation = false;
-        }
+        // non-financial intents with exact match → no confirmation
+        if (!FORCE_CONFIRM_INTENTS.has(intent)) needsConfirmation = false;
       }
     } catch (_err) {
       // linking failure is non-fatal
@@ -861,16 +863,16 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
     status: "new",
   });
 
-  // Auto-apply safe intents when exactly linked
+  // Auto-apply: job creation intents always, safe update intents when exactly linked
   let autoApplied = false;
-  if (!needsConfirmation && row?.id && SAFE_AUTO_APPLY_INTENTS.has(intent) && linkedJobId) {
+  const canAutoApply =
+    row?.id &&
+    SAFE_AUTO_APPLY_INTENTS.has(intent) &&
+    (JOB_CREATE_INTENTS.has(intent) || linkedJobId);
+
+  if (canAutoApply) {
     try {
-      autoApplied = await autoApplySuggestedAction(
-        row.id,
-        intent,
-        result.proposed_updates || {},
-        linkedJobId
-      );
+      autoApplied = Boolean(await autoApplySuggestedAction(row.id));
     } catch (_err) {
       // auto-apply failure is non-fatal
     }
@@ -1033,6 +1035,35 @@ app.post("/api/jobs/:id/appointment", requireAuthApi, async (req, res) => {
   const updatedPayload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
   res.json({ ok: true, job: updatedPayload });
 });
+
+// ── Quick job creation ────────────────────────────────────────────────────
+app.post("/api/jobs", requireAuthApi, async (req, res) => {
+  if (!canAssign(req.authUser)) {
+    res.status(403).json({ error: "Geen toegang" });
+    return;
+  }
+
+  const address = String(req.body.address || "").trim();
+  if (!address) {
+    res.status(400).json({ error: "Adres is verplicht" });
+    return;
+  }
+
+  try {
+    const cardId = await createQuickJob({
+      address,
+      clientName: String(req.body.client_name || "").trim() || null,
+      phone: String(req.body.phone || "").trim() || null,
+      category: String(req.body.category || "Dringend").trim(),
+      problemType: String(req.body.problem_type || "").trim() || null,
+      createdBy: req.authUser?.tg_id || 0,
+    });
+    res.status(201).json({ ok: true, card_id: cardId });
+  } catch (err) {
+    res.status(500).json({ error: err.message || "Aanmaken mislukt" });
+  }
+});
+// ────────────────────────────────────────────────────────────────────────────
 
 // ── Telegram Mini App ──────────────────────────────────────────────────────
 const crypto = require("crypto");

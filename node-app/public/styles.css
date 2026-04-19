@@ -1659,3 +1659,115 @@ select {
   color: #b45309;
   font-size: 0.85rem;
 }
+
+/* ── Modal ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 28px 24px;
+  width: min(480px, 100%);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-head h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: rgba(15, 23, 42, 0.5);
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.modal-form {
+  display: grid;
+  gap: 14px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.7);
+}
+
+.field input,
+.field select {
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  background: #fafafa;
+  width: 100%;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: 2px solid rgba(31, 111, 95, 0.5);
+  border-color: #1f6f5f;
+  background: #fff;
+}
+
+.required {
+  color: #dc2626;
+}
+
+.form-feedback {
+  font-size: 0.9rem;
+  min-height: 1.2em;
+}
+
+.form-feedback--error {
+  color: #dc2626;
+}
+
+.form-feedback--ok {
+  color: #16a34a;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.section-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
