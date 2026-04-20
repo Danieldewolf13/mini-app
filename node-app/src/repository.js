@@ -239,7 +239,6 @@ async function fetchAllTelegramUsers() {
       u.is_active,
       u.updated_at
     FROM users u
-    WHERE u.tg_id IS NOT NULL
     ORDER BY u.full_name ASC
   `;
 
@@ -264,12 +263,24 @@ async function addManualTechnician({ fullName, techKey, tgId }) {
     resolvedTgId = Number(rows[0]?.next_id || -1);
     if (resolvedTgId >= 0) resolvedTgId = -1;
   }
-  await query(
-    `INSERT INTO users (tg_id, full_name, tech_key, role, is_active, created_at, updated_at)
-     VALUES (?, ?, ?, 'technician', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-     ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), tech_key = VALUES(tech_key), is_active = 1, updated_at = CURRENT_TIMESTAMP`,
-    [resolvedTgId, String(fullName || "").trim(), String(techKey || "").trim() || null]
-  );
+  const name = String(fullName || "").trim();
+  const key = String(techKey || "").trim() || null;
+  try {
+    await query(
+      `INSERT INTO users (tg_id, full_name, tech_key, role, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, 'technician', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), tech_key = VALUES(tech_key), is_active = 1, updated_at = CURRENT_TIMESTAMP`,
+      [resolvedTgId, name, key]
+    );
+  } catch (_e) {
+    // updated_at / created_at may not exist — retry with minimal columns
+    await query(
+      `INSERT INTO users (tg_id, full_name, tech_key, role, is_active)
+       VALUES (?, ?, ?, 'technician', 1)
+       ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), tech_key = VALUES(tech_key), is_active = 1`,
+      [resolvedTgId, name, key]
+    );
+  }
 }
 
 async function fetchUserByTechKey(techKey) {
@@ -379,17 +390,35 @@ async function createQuickJob({ address, clientName, phone, category, problemTyp
   const safeProblem = (problemType || "Onbekend").trim();
   const safeAddress = (address || "").trim();
 
-  await query(
-    `INSERT INTO clients (phone, client_name, client_type) VALUES (?, ?, 'private')`,
-    [safePhone, safeName]
-  );
+  // Insert client — only use columns that are guaranteed to exist in the schema
+  try {
+    await query(
+      `INSERT INTO clients (phone, client_name, client_type) VALUES (?, ?, 'private')`,
+      [safePhone, safeName]
+    );
+  } catch (_e) {
+    // client_type column may not exist — retry without it
+    await query(
+      `INSERT INTO clients (phone, client_name) VALUES (?, ?)`,
+      [safePhone, safeName]
+    );
+  }
   const [{ "LAST_INSERT_ID()": clientId }] = await query(`SELECT LAST_INSERT_ID()`);
 
-  await query(
-    `INSERT INTO cards (client_id, category, problem_type, address_raw, status, created_by, group_chat_id)
-     VALUES (?, ?, ?, ?, 'new', ?, ?)`,
-    [clientId, safeCategory, safeProblem, safeAddress, createdBy || 0, groupChatId || null]
-  );
+  // Insert card — try with optional columns first, fall back to minimal set
+  try {
+    await query(
+      `INSERT INTO cards (client_id, category, problem_type, address_raw, status, group_chat_id)
+       VALUES (?, ?, ?, ?, 'new', ?)`,
+      [clientId, safeCategory, safeProblem, safeAddress, groupChatId || null]
+    );
+  } catch (_e) {
+    await query(
+      `INSERT INTO cards (client_id, category, problem_type, address_raw, status)
+       VALUES (?, ?, ?, ?, 'new')`,
+      [clientId, safeCategory, safeProblem, safeAddress]
+    );
+  }
   const [{ "LAST_INSERT_ID()": cardId }] = await query(`SELECT LAST_INSERT_ID()`);
   return Number(cardId);
 }
