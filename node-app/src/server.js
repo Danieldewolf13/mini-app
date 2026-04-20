@@ -145,9 +145,29 @@ async function loadJobsPayload() {
 
 async function loadSuggestedActions() {
   try {
+    // Reprocess any stuck create-job items before loading the list
+    await reprocessStuckKarenJobs();
     return await listSuggestedActions(20);
   } catch (_error) {
     return [];
+  }
+}
+
+async function reprocessStuckKarenJobs() {
+  try {
+    const stuck = await listSuggestedActions(50);
+    const toRetry = stuck.filter(
+      (a) => a.status === "new" && (a.intent === "create_urgent_job" || a.intent === "create_scheduled_job") && !a.linked_job_id
+    );
+    for (const action of toRetry) {
+      try {
+        await autoApplySuggestedAction(action.id);
+      } catch (_err) {
+        // non-fatal
+      }
+    }
+  } catch (_err) {
+    // non-fatal
   }
 }
 
