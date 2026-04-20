@@ -159,10 +159,17 @@ async function loadSuggestedActions() {
 async function reprocessStuckKarenJobs() {
   try {
     const stuck = await listSuggestedActions(50);
-    const toRetry = stuck.filter(
-      (a) => a.status === "new" && (a.intent === "create_urgent_job" || a.intent === "create_scheduled_job") && !a.linked_job_id
-    );
-    for (const action of toRetry) {
+    for (const action of stuck) {
+      if (action.status !== "new" || action.linked_job_id) continue;
+      const isJobCreate = action.intent === "create_urgent_job" || action.intent === "create_scheduled_job";
+      if (!isJobCreate) continue;
+      // Auto-reject items with < 35% confidence — garbage from Karen
+      if (Number(action.confidence || 0) < 0.35) {
+        try {
+          await updateSuggestedActionStatus(action.id, "rejected", "auto-filter");
+        } catch (_e) { /* non-fatal */ }
+        continue;
+      }
       try {
         await autoApplySuggestedAction(action.id);
       } catch (_err) {
@@ -1040,11 +1047,11 @@ app.post("/dispatcher/suggested-actions/:id/create-job", requireAuthPage, requir
     });
 
     await updateSuggestedActionStatus(req.params.id, "applied", reviewer, { linked_card_id: cardId });
+    res.redirect("/dispatcher/dashboard?success=Job+aangemaakt");
   } catch (err) {
     console.error("[create-job] mislukt:", err.message);
+    res.redirect(`/dispatcher/dashboard?db_error=${encodeURIComponent(err.message)}`);
   }
-
-  res.redirect("/dispatcher/dashboard");
 });
 
 app.get("/api/planning", requireAuthApi, async (req, res) => {

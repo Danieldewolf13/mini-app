@@ -389,35 +389,33 @@ async function createQuickJob({ address, clientName, phone, category, problemTyp
   const safeProblem = (problemType || "Onbekend").trim();
   const safeAddress = (address || "").trim();
 
-  // Insert client — only use columns that are guaranteed to exist in the schema
-  try {
-    await query(
-      `INSERT INTO clients (phone, client_name, client_type) VALUES (?, ?, 'private')`,
-      [safePhone, safeName]
-    );
-  } catch (_e) {
-    // client_type column may not exist — retry without it
-    await query(
-      `INSERT INTO clients (phone, client_name) VALUES (?, ?)`,
-      [safePhone, safeName]
-    );
+  // Insert client — try with client_type, fall back without
+  let clientInsertError;
+  for (const sql of [
+    [`INSERT INTO clients (phone, client_name, client_type) VALUES (?, ?, 'private')`, [safePhone, safeName]],
+    [`INSERT INTO clients (phone, client_name) VALUES (?, ?)`, [safePhone, safeName]],
+    [`INSERT INTO clients (client_name) VALUES (?)`, [safeName]],
+  ]) {
+    try { await query(sql[0], sql[1]); clientInsertError = null; break; }
+    catch (e) { clientInsertError = e; }
   }
+  if (clientInsertError) throw new Error(`Client insert mislukt: ${clientInsertError.message}`);
+
   const [{ "LAST_INSERT_ID()": clientId }] = await query(`SELECT LAST_INSERT_ID()`);
 
-  // Insert card — try with optional columns first, fall back to minimal set
-  try {
-    await query(
-      `INSERT INTO cards (client_id, category, problem_type, address_raw, status, group_chat_id)
-       VALUES (?, ?, ?, ?, 'new', ?)`,
-      [clientId, safeCategory, safeProblem, safeAddress, groupChatId || null]
-    );
-  } catch (_e) {
-    await query(
-      `INSERT INTO cards (client_id, category, problem_type, address_raw, status)
-       VALUES (?, ?, ?, ?, 'new')`,
-      [clientId, safeCategory, safeProblem, safeAddress]
-    );
+  // Insert card — try progressively simpler variants
+  let cardInsertError;
+  for (const [sql, params] of [
+    [`INSERT INTO cards (client_id, category, problem_type, address_raw, status, group_chat_id) VALUES (?, ?, ?, ?, 'new', ?)`, [clientId, safeCategory, safeProblem, safeAddress, groupChatId || null]],
+    [`INSERT INTO cards (client_id, category, problem_type, address_raw, status) VALUES (?, ?, ?, ?, 'new')`, [clientId, safeCategory, safeProblem, safeAddress]],
+    [`INSERT INTO cards (client_id, category, address_raw, status) VALUES (?, ?, ?, 'new')`, [clientId, safeCategory, safeAddress]],
+    [`INSERT INTO cards (client_id, address_raw, status) VALUES (?, ?, 'new')`, [clientId, safeAddress]],
+  ]) {
+    try { await query(sql, params); cardInsertError = null; break; }
+    catch (e) { cardInsertError = e; }
   }
+  if (cardInsertError) throw new Error(`Card insert mislukt: ${cardInsertError.message}`);
+
   const [{ "LAST_INSERT_ID()": cardId }] = await query(`SELECT LAST_INSERT_ID()`);
   return Number(cardId);
 }
