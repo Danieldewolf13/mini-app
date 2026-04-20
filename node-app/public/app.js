@@ -165,8 +165,11 @@ function minutesAgo(dateStr) {
 async function refreshTechnicianLocations() {
   if (!map) return;
   try {
-    const resp = await fetch("/api/locations");
-    if (!resp.ok) return;
+    const resp = await fetch("/api/locations", { credentials: "same-origin" });
+    if (!resp.ok) {
+      console.warn("[locaties] GET /api/locations →", resp.status);
+      return;
+    }
     const locs = await resp.json();
 
     // Remove markers for technicians no longer in response
