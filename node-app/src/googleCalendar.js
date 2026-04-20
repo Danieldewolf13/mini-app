@@ -1,7 +1,10 @@
 /**
- * Google Calendar integration for the mini-app dispatcher.
- * Uses the same service account as the Telegram bot (GOOGLE_CREDENTIALS env var).
+ * Google Calendar integration — geen externe packages nodig.
+ * Gebruikt Node.js ingebouwde crypto + https modules met service account JWT.
  */
+
+const crypto = require("crypto");
+const https  = require("https");
 
 const CALENDAR_MAP = {
   APTI:        "c_103790318ae882bd0068f7229227c1212484c6f25eac55262b990b02b11ed274@group.calendar.google.com",
@@ -17,147 +20,211 @@ const CALENDAR_MAP = {
 function getCredentials() {
   const raw = process.env.GOOGLE_CREDENTIALS || "";
   if (!raw.trim()) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (_) {
-    return null;
-  }
+  try { return JSON.parse(raw); } catch (_) { return null; }
 }
 
-/**
- * Get calendar ID for a tech_key (case-insensitive).
- */
 function getCalendarId(techKey) {
   if (!techKey) return null;
   return CALENDAR_MAP[String(techKey).toUpperCase()] || null;
 }
 
-/**
- * Create or update a calendar event for a job appointment.
- * Returns the event ID if successful, null otherwise.
- */
-async function upsertCalendarEvent({ techKey, eventId, title, description, address, scheduledAt, durationMinutes = 60 }) {
-  const credentials = getCredentials();
-  const calendarId = getCalendarId(techKey);
-  if (!credentials || !calendarId) return null;
+// ── JWT helpers ────────────────────────────────────────────────────────────
 
-  let googleLib;
-  try { googleLib = require("googleapis"); } catch (_) { return null; }
+function b64url(str) {
+  return Buffer.from(str).toString("base64url");
+}
+
+function makeJwt(credentials, scope) {
+  const now = Math.floor(Date.now() / 1000);
+  const header  = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const payload = b64url(JSON.stringify({
+    iss: credentials.client_email,
+    scope,
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now,
+  }));
+  const unsigned = `${header}.${payload}`;
+  const sign = crypto.createSign("RSA-SHA256");
+  sign.update(unsigned);
+  const sig = sign.sign(credentials.private_key, "base64url");
+  return `${unsigned}.${sig}`;
+}
+
+async function getAccessToken(credentials, scope) {
+  const jwt = makeJwt(credentials, scope);
+  const body = `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`;
+  const data = await httpPost("https://oauth2.googleapis.com/token", body, {
+    "Content-Type": "application/x-www-form-urlencoded",
+  });
+  return data.access_token || null;
+}
+
+// ── HTTP helpers ──────────────────────────────────────────────────────────
+
+function httpPost(url, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const buf = Buffer.from(typeof body === "string" ? body : JSON.stringify(body));
+    const req = https.request({
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      method: "POST",
+      headers: { "Content-Length": buf.length, ...headers },
+    }, (res) => {
+      let raw = "";
+      res.on("data", (c) => { raw += c; });
+      res.on("end", () => {
+        try { resolve(JSON.parse(raw)); } catch (_) { resolve({}); }
+      });
+    });
+    req.on("error", reject);
+    req.write(buf);
+    req.end();
+  });
+}
+
+function httpGet(url, token) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    https.get({
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      headers: { Authorization: `Bearer ${token}` },
+    }, (res) => {
+      let raw = "";
+      res.on("data", (c) => { raw += c; });
+      res.on("end", () => {
+        try { resolve(JSON.parse(raw)); } catch (_) { resolve({}); }
+      });
+    }).on("error", reject);
+  });
+}
+
+function httpRequest(method, url, token, body) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const buf = body ? Buffer.from(JSON.stringify(body)) : null;
+    const req = https.request({
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(buf ? { "Content-Type": "application/json", "Content-Length": buf.length } : {}),
+      },
+    }, (res) => {
+      let raw = "";
+      res.on("data", (c) => { raw += c; });
+      res.on("end", () => {
+        try { resolve(JSON.parse(raw)); } catch (_) { resolve({}); }
+      });
+    });
+    req.on("error", reject);
+    if (buf) req.write(buf);
+    req.end();
+  });
+}
+
+// ── Public API ────────────────────────────────────────────────────────────
+
+async function upsertCalendarEvent({ techKey, eventId, title, description, address, scheduledAt, durationMinutes = 60 }) {
+  const creds = getCredentials();
+  const calendarId = getCalendarId(techKey);
+  if (!creds || !calendarId) return null;
 
   try {
-    const { google } = googleLib;
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/calendar"],
-    });
-    const calendar = google.calendar({ version: "v3", auth });
+    const token = await getAccessToken(creds, "https://www.googleapis.com/auth/calendar");
+    if (!token) return null;
 
     const start = new Date(scheduledAt);
-    const end = new Date(start.getTime() + durationMinutes * 60000);
-
+    const end   = new Date(start.getTime() + durationMinutes * 60000);
     const event = {
-      summary: title,
+      summary:     title,
       description: description || "",
-      location: address || "",
+      location:    address || "",
       start: { dateTime: start.toISOString(), timeZone: "Europe/Brussels" },
       end:   { dateTime: end.toISOString(),   timeZone: "Europe/Brussels" },
     };
 
+    const calEncoded = encodeURIComponent(calendarId);
     if (eventId) {
-      // Update existing event
-      const res = await calendar.events.update({ calendarId, eventId, requestBody: event });
-      return res.data.id;
+      const res = await httpRequest("PUT",
+        `https://www.googleapis.com/calendar/v3/calendars/${calEncoded}/events/${eventId}`,
+        token, event);
+      return res.id || null;
     } else {
-      // Create new event
-      const res = await calendar.events.insert({ calendarId, requestBody: event });
-      return res.data.id;
+      const res = await httpRequest("POST",
+        `https://www.googleapis.com/calendar/v3/calendars/${calEncoded}/events`,
+        token, event);
+      return res.id || null;
     }
   } catch (err) {
-    console.error("Google Calendar error:", err.message || err);
+    console.error("Google Calendar upsert error:", err.message);
     return null;
   }
 }
 
 async function deleteCalendarEvent({ techKey, eventId }) {
   if (!techKey || !eventId) return false;
-  const credentials = getCredentials();
+  const creds = getCredentials();
   const calendarId = getCalendarId(techKey);
-  if (!credentials || !calendarId) return false;
-
-  let googleLib;
-  try { googleLib = require("googleapis"); } catch (_) { return false; }
+  if (!creds || !calendarId) return false;
 
   try {
-    const { google } = googleLib;
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/calendar"],
-    });
-    const calendar = google.calendar({ version: "v3", auth });
-    await calendar.events.delete({ calendarId, eventId });
+    const token = await getAccessToken(creds, "https://www.googleapis.com/auth/calendar");
+    if (!token) return false;
+    const calEncoded = encodeURIComponent(calendarId);
+    await httpRequest("DELETE",
+      `https://www.googleapis.com/calendar/v3/calendars/${calEncoded}/events/${eventId}`,
+      token, null);
     return true;
   } catch (err) {
-    console.error("Google Calendar delete error:", err.message || err);
+    console.error("Google Calendar delete error:", err.message);
     return false;
   }
 }
 
-/**
- * Fetch upcoming events for one or all technicians (next N days).
- * Returns array of { techKey, calendarId, events[] }
- */
-async function fetchUpcomingCalendarEvents(techKeys, daysAhead = 7) {
-  const credentials = getCredentials();
-  if (!credentials) return [];
-
-  let googleLib;
-  try { googleLib = require("googleapis"); } catch (_) { return []; }
+async function fetchUpcomingCalendarEvents(techKeys, daysAhead = 14) {
+  const creds = getCredentials();
+  if (!creds) return [];
 
   try {
-    const { google } = googleLib;
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/calendar.readonly"],
-    });
-    const calendar = google.calendar({ version: "v3", auth });
+    const token = await getAccessToken(creds, "https://www.googleapis.com/auth/calendar.readonly");
+    if (!token) return [];
 
-    const now = new Date();
+    const now   = new Date();
     const until = new Date(now.getTime() + daysAhead * 86400000);
-
-    const keys = Array.isArray(techKeys) ? techKeys : Object.keys(CALENDAR_MAP);
+    const keys  = Array.isArray(techKeys) ? techKeys : Object.keys(CALENDAR_MAP);
     const results = [];
 
     for (const key of keys) {
       const calendarId = getCalendarId(key);
       if (!calendarId) continue;
       try {
-        const res = await calendar.events.list({
-          calendarId,
-          timeMin: now.toISOString(),
-          timeMax: until.toISOString(),
-          singleEvents: true,
-          orderBy: "startTime",
-          maxResults: 50,
-        });
+        const calEncoded = encodeURIComponent(calendarId);
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${calEncoded}/events`
+          + `?timeMin=${encodeURIComponent(now.toISOString())}`
+          + `&timeMax=${encodeURIComponent(until.toISOString())}`
+          + `&singleEvents=true&orderBy=startTime&maxResults=50`;
+        const data = await httpGet(url, token);
         results.push({
           techKey: key,
           calendarId,
-          events: (res.data.items || []).map((e) => ({
-            id: e.id,
-            title: e.summary || "",
+          events: (data.items || []).map((e) => ({
+            id:          e.id,
+            title:       e.summary || "",
             description: e.description || "",
-            location: e.location || "",
-            start: e.start?.dateTime || e.start?.date,
-            end:   e.end?.dateTime   || e.end?.date,
+            location:    e.location || "",
+            start:       e.start?.dateTime || e.start?.date,
+            end:         e.end?.dateTime   || e.end?.date,
           })),
         });
-      } catch (_) {
-        // skip calendars that fail individually
-      }
+      } catch (_) { /* skip individual failures */ }
     }
     return results;
   } catch (err) {
-    console.error("Google Calendar fetch error:", err.message || err);
+    console.error("Google Calendar fetch error:", err.message);
     return [];
   }
 }
