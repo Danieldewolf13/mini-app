@@ -590,9 +590,8 @@ async function listSuggestedActions(limit = 20) {
         created_at,
         updated_at
       FROM suggested_actions
-      WHERE status IN ('new', 'applied')
-        AND (status = 'new' OR (status = 'applied' AND reviewed_by = 'karen-auto' AND applied_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)))
-        AND (status != 'new' OR linked_job_id IS NOT NULL OR intent IN ('create_urgent_job','create_scheduled_job','submit_invoice_data','register_quick_payment','payment_proof_received','material_request','material_update','quote_request','quote_update','document_request','signed_document_received','reassign_job_request','cancel_job_request'))
+      WHERE status = 'new'
+        AND (linked_job_id IS NOT NULL OR intent IN ('create_urgent_job','create_scheduled_job','submit_invoice_data','register_quick_payment','payment_proof_received','material_request','material_update','quote_request','quote_update','document_request','signed_document_received','reassign_job_request','cancel_job_request'))
       ORDER BY
         CASE status WHEN 'new' THEN 0 ELSE 1 END,
         updated_at DESC, id DESC

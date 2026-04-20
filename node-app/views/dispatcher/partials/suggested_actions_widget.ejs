@@ -62,7 +62,7 @@
           <% } %>
 
           <div class="suggested-action-meta">
-            <span><%= item.link_status === 'exact' ? 'Gekoppeld' : item.link_status === 'unlinked' ? 'Niet gekoppeld' : item.link_status %> · <%= Number(item.confidence || 0).toFixed(0) %>%</span>
+            <span><%= item.link_status === 'exact' ? 'Gekoppeld' : item.link_status === 'unlinked' ? 'Niet gekoppeld' : item.link_status %> · <%= Math.round(Number(item.confidence || 0) * 100) %>%</span>
             <% if (item.reason_for_confirmation) { %>
               <span class="sa-reason"><%= item.reason_for_confirmation %></span>
             <% } %>
