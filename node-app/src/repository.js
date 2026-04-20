@@ -203,7 +203,6 @@ async function fetchTechnicianSummary() {
       ON c.assigned_to = u.tg_id
      AND c.status NOT IN ('completed', 'cancelled')
     WHERE u.is_active = 1
-      AND u.tg_id IS NOT NULL
       AND u.tech_key IS NOT NULL
       AND u.tech_key != ''
     GROUP BY u.tg_id, u.full_name, u.tech_key, u.role
@@ -222,7 +221,6 @@ async function fetchPlanningTechnicians() {
       u.role
     FROM users u
     WHERE u.is_active = 1
-      AND u.tg_id IS NOT NULL
       AND u.tech_key IS NOT NULL
       AND u.tech_key != ''
     ORDER BY u.full_name ASC
@@ -256,6 +254,22 @@ async function updateTelegramUser({ tgId, techKey, isActive }) {
   if (!sets.length) return;
   params.push(Number(tgId));
   await query(`UPDATE users SET ${sets.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE tg_id = ? LIMIT 1`, params);
+}
+
+async function addManualTechnician({ fullName, techKey, tgId }) {
+  // If no tgId provided, generate a synthetic negative ID to avoid conflicts with real Telegram IDs
+  let resolvedTgId = tgId ? Number(tgId) : null;
+  if (!resolvedTgId) {
+    const rows = await query(`SELECT COALESCE(MIN(tg_id), 0) - 1 AS next_id FROM users`);
+    resolvedTgId = Number(rows[0]?.next_id || -1);
+    if (resolvedTgId >= 0) resolvedTgId = -1;
+  }
+  await query(
+    `INSERT INTO users (tg_id, full_name, tech_key, role, is_active, created_at, updated_at)
+     VALUES (?, ?, ?, 'technician', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+     ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), tech_key = VALUES(tech_key), is_active = 1, updated_at = CURRENT_TIMESTAMP`,
+    [resolvedTgId, String(fullName || "").trim(), String(techKey || "").trim() || null]
+  );
 }
 
 async function fetchUserByTechKey(techKey) {
@@ -1141,6 +1155,7 @@ module.exports = {
   createOrUpdateSuggestedAction,
   createQuickJob,
   ensureSuggestedActionsSchema,
+  addManualTechnician,
   fetchActiveTechnicianLocations,
   fetchAllTelegramUsers,
   fetchSuggestedActionById,

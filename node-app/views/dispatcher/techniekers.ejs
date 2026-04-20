@@ -16,10 +16,11 @@ const rows = telegramUsers.map((u) => {
     <tr class="${u.is_active ? "" : "row--inactive"}">
       <td>
         <strong>${esc(u.full_name || "—")}</strong>
-        <div class="users-table-meta">tg_id: ${esc(u.tg_id)}</div>
+        ${u.tg_id ? `<div class="users-table-meta">tg_id: ${esc(u.tg_id)}</div>` : '<div class="users-table-meta">Handmatig toegevoegd</div>'}
       </td>
+      <td>${esc(u.tech_key || "—")}</td>
       <td>
-        <form method="post" action="/dispatcher/techniekers/${esc(u.tg_id)}/update" class="inline-form">
+        <form method="post" action="/dispatcher/techniekers/${esc(u.tg_id || "0")}/update" class="inline-form" style="display:flex;gap:6px;align-items:center">
           <select name="tech_key" class="sa-input">
             <option value="">— geen —</option>
             ${opts}
@@ -35,32 +36,71 @@ const rows = telegramUsers.map((u) => {
   `;
 }).join("");
 
+const addOpts = techKeyOptions
+  .map((k) => `<option value="${esc(k)}">${esc(k)}</option>`)
+  .join("");
+
 const body = `
   <div class="users-page">
     <section class="panel">
       <div class="section-head">
         <div>
-          <p class="section-kicker">Telegram</p>
-          <h2>Techniekers beheer</h2>
+          <p class="section-kicker">Beheer</p>
+          <h2>Techniekers</h2>
         </div>
-        <span class="section-meta">${telegramUsers.length} Telegram-gebruikers</span>
+        <span class="section-meta">${telegramUsers.length} techniekers</span>
       </div>
       <p class="placeholder-copy">
-        Stel hier per Telegram-gebruiker de techniekercode in. Alleen gebruikers <strong>met een code</strong> en status <strong>Actief</strong> verschijnen in de planning en op de kaart.
+        Alleen techniekers met een <strong>techniekercode</strong> en status <strong>Actief</strong> verschijnen in de planning, op de kaart en in job-toewijzing.
       </p>
       ${success ? `<div class="alert-banner alert-banner--success"><strong>Gelukt</strong><p>${success}</p></div>` : ""}
+      ${locals.error ? `<div class="alert-banner"><strong>Fout</strong><p>${locals.error}</p></div>` : ""}
     </section>
 
     <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Nieuw</p>
+          <h2>Technieker toevoegen</h2>
+        </div>
+      </div>
+      <form method="post" action="/dispatcher/techniekers/add" class="users-form">
+        <label class="auth-field">
+          <span>Volledige naam *</span>
+          <input type="text" name="full_name" required placeholder="bv. Armadeos Janssen">
+        </label>
+        <label class="auth-field">
+          <span>Techniekercode *</span>
+          <select name="tech_key" required>
+            <option value="">— kies code —</option>
+            ${addOpts}
+          </select>
+        </label>
+        <label class="auth-field">
+          <span>Telegram ID (optioneel)</span>
+          <input type="number" name="tg_id" placeholder="bv. 123456789 — laat leeg als onbekend">
+        </label>
+        <button class="auth-submit" type="submit">Toevoegen</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Overzicht</p>
+          <h2>Alle techniekers</h2>
+        </div>
+      </div>
       <table class="users-table">
         <thead>
           <tr>
             <th>Naam</th>
-            <th>Techniekercode · Status</th>
+            <th>Code</th>
+            <th>Code aanpassen · Status</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || '<tr><td colspan="2"><p class="empty-state">Nog geen Telegram-gebruikers gevonden.</p></td></tr>'}
+          ${rows || '<tr><td colspan="3"><p class="empty-state">Nog geen techniekers gevonden. Voeg ze hierboven toe.</p></td></tr>'}
         </tbody>
       </table>
     </section>

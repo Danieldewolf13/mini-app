@@ -10,6 +10,7 @@ const {
   createOrUpdateSuggestedAction,
   createQuickJob,
   ensureSuggestedActionsSchema,
+  addManualTechnician,
   fetchActiveTechnicianLocations,
   fetchAllTelegramUsers,
   fetchPlanningTechnicians,
@@ -820,13 +821,29 @@ app.get("/dispatcher/techniekers", requireAuthPage, requireNavAccess("users"), a
   }
 });
 
+app.post("/dispatcher/techniekers/add", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
+  try {
+    const fullName = String(req.body.full_name || "").trim();
+    const techKey = String(req.body.tech_key || "").trim();
+    const tgId = req.body.tg_id ? Number(req.body.tg_id) : null;
+    if (!fullName || !techKey) {
+      res.redirect("/dispatcher/techniekers?error=Naam+en+code+zijn+verplicht");
+      return;
+    }
+    await addManualTechnician({ fullName, techKey, tgId });
+    res.redirect("/dispatcher/techniekers?success=Technieker+toegevoegd");
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/dispatcher/techniekers/:tgId/update", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
   try {
     const tgId = Number(req.params.tgId);
     const techKey = req.body.tech_key === "" ? null : String(req.body.tech_key || "").trim() || null;
     const isActive = req.body.is_active === "1";
     await updateTelegramUser({ tgId, techKey, isActive });
-    res.redirect("/dispatcher/techniekers?success=Technieker bijgewerkt");
+    res.redirect("/dispatcher/techniekers?success=Technieker+bijgewerkt");
   } catch (error) {
     next(error);
   }
@@ -899,6 +916,14 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
 
   const result = req.body && typeof req.body === "object" ? req.body : {};
   const intent = String(result.intent || "unknown");
+  const confidence = Number(result.confidence || 0);
+
+  // Drop job-creation intents with very low confidence — these are misclassified
+  // conversation messages (Karen zelf geeft aan niet zeker te zijn: < 35%)
+  if (JOB_CREATE_INTENTS.has(intent) && confidence < 0.35) {
+    res.status(200).json({ ok: true, id: null, auto_applied: false, linked_job_id: null, skipped: true, reason: "low_confidence" });
+    return;
+  }
 
   // Job creation is always assumed correct — no confirmation needed
   // For other intents: try to auto-link via group chat_id
