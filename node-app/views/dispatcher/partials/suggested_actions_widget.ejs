@@ -9,7 +9,15 @@
 
   <% if (suggestedActions.length) { %>
     <div class="suggested-actions-list">
-      <% suggestedActions.slice(0, 15).forEach((item) => { %>
+      <% suggestedActions.slice(0, 15).forEach((item) => {
+           const fields = item.parsed_fields || {};
+           const address = fields.address || fields.adres || fields.address_raw || fields.locatie || fields.location || "";
+           const clientName = fields.customer_name || fields.client_name || fields.klant || fields.naam || "";
+           const phone = fields.phone || fields.telefoonnummer || fields.tel || fields.gsm || "";
+           const problemType = fields.problem_type || fields.probleem || fields.omschrijving || fields.description || "";
+           const isJobCreate = item.intent === 'create_urgent_job' || item.intent === 'create_scheduled_job';
+           const failedCreate = isJobCreate && item.status === 'new' && !item.linked_job_id;
+      %>
         <article class="suggested-action-card status-<%= item.status %>">
           <div class="suggested-action-topline">
             <div>
@@ -17,23 +25,49 @@
               <% if (item.linked_job_id) { %><span class="sa-job-link">→ Job #<%= item.linked_job_id %></span><% } %>
             </div>
             <% if (item.status === 'applied' && item.reviewed_by === 'karen-auto') { %>
-              <span class="sa-badge sa-badge--auto">Karen</span>
+              <span class="sa-badge sa-badge--auto">Karen ✓</span>
             <% } else if (item.status === 'new') { %>
               <span class="sa-badge sa-badge--pending">Open</span>
             <% } %>
           </div>
+
           <p class="suggested-action-message"><%= item.raw_message %></p>
+
+          <% if (address || clientName || phone || problemType) { %>
+            <div class="sa-fields">
+              <% if (address)     { %><span>📍 <%= address %></span><% } %>
+              <% if (clientName)  { %><span>👤 <%= clientName %></span><% } %>
+              <% if (phone)       { %><span>📞 <%= phone %></span><% } %>
+              <% if (problemType) { %><span>🔧 <%= problemType %></span><% } %>
+            </div>
+          <% } %>
+
           <div class="suggested-action-meta">
             <span><%= item.link_status %> · <%= Number(item.confidence || 0).toFixed(0) %>%</span>
             <% if (item.reason_for_confirmation) { %>
               <span class="sa-reason"><%= item.reason_for_confirmation %></span>
             <% } %>
           </div>
+
           <% if (item.status === 'new') { %>
             <div class="suggested-action-controls">
-              <form method="post" action="/dispatcher/suggested-actions/<%= item.id %>/confirm" style="display:inline">
-                <button type="submit" class="inline-button">Bevestigen</button>
-              </form>
+              <% if (failedCreate) { %>
+                <%/* Job creation failed (no address extracted) — toon bewerk-formulier */%>
+                <details class="sa-manual-create">
+                  <summary class="inline-button">📝 Handmatig aanmaken</summary>
+                  <form method="post" action="/dispatcher/suggested-actions/<%= item.id %>/create-job" class="sa-create-form">
+                    <input type="text" name="address"      placeholder="Adres *" value="<%= address %>" required class="sa-input">
+                    <input type="text" name="client_name"  placeholder="Klant"   value="<%= clientName %>" class="sa-input">
+                    <input type="text" name="phone"        placeholder="Tel"     value="<%= phone %>" class="sa-input">
+                    <input type="text" name="problem_type" placeholder="Probleem" value="<%= problemType %>" class="sa-input">
+                    <button type="submit" class="inline-button">Job aanmaken</button>
+                  </form>
+                </details>
+              <% } else { %>
+                <form method="post" action="/dispatcher/suggested-actions/<%= item.id %>/confirm" style="display:inline">
+                  <button type="submit" class="inline-button">Bevestigen</button>
+                </form>
+              <% } %>
               <form method="post" action="/dispatcher/suggested-actions/<%= item.id %>/reject" style="display:inline">
                 <button type="submit" class="inline-button is-secondary">Verwerpen</button>
               </form>

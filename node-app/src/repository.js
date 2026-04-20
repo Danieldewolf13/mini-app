@@ -367,15 +367,32 @@ async function autoApplySuggestedAction(id) {
   const linkedJobId = action.linked_job_id ? Number(action.linked_job_id) : null;
 
   if (JOB_CREATE_INTENTS.has(intent)) {
-    const address = (parsedFields.address || "").trim();
-    if (!address) return false; // can't create a job without an address
+    // Flexibele veldnaam mapping — Karen kan verschillende namen gebruiken
+    const pick = (...keys) => {
+      for (const k of keys) {
+        const v = parsedFields[k];
+        if (v && String(v).trim()) return String(v).trim();
+      }
+      return "";
+    };
+
+    const address = pick("address", "adres", "address_raw", "locatie", "location", "straat");
+    const clientName = pick("customer_name", "client_name", "klant", "naam", "name", "client");
+    const phone = pick("phone", "telefoonnummer", "tel", "gsm", "telefoon", "phone_number");
+    const problemType = pick("problem_type", "probleem", "type", "work_type", "omschrijving", "description", "issue");
+
+    if (!address) {
+      // Log welke velden er wél zijn zodat we de mapping kunnen corrigeren
+      console.warn(`[karen-auto] create job mislukt — geen adres. Beschikbare velden: ${JSON.stringify(parsedFields)}`);
+      return false;
+    }
 
     const cardId = await createQuickJob({
       address,
-      clientName: parsedFields.customer_name,
-      phone: parsedFields.phone,
+      clientName: clientName || null,
+      phone: phone || null,
       category: intent === "create_scheduled_job" ? "Afspraak" : "Dringend",
-      problemType: parsedFields.problem_type,
+      problemType: problemType || null,
       createdBy: action.source_user_id,
       groupChatId: action.source_chat_id,
     });
@@ -666,20 +683,27 @@ async function createOrUpdateSuggestedAction(payload) {
   return rows[0] || null;
 }
 
-async function updateSuggestedActionStatus(id, status, reviewedBy) {
+async function updateSuggestedActionStatus(id, status, reviewedBy, extra = {}) {
   await ensureSuggestedActionsSchema();
+  const sets = [
+    "status = ?",
+    "reviewed_by = ?",
+    "reviewed_at = CURRENT_TIMESTAMP",
+    "updated_at = CURRENT_TIMESTAMP",
+  ];
+  const params = [String(status || "new"), reviewedBy ? String(reviewedBy) : null];
+  if (extra.linked_card_id != null) {
+    sets.push("linked_card_id = ?");
+    params.push(Number(extra.linked_card_id));
+  }
+  if (extra.linked_job_id != null) {
+    sets.push("linked_job_id = ?");
+    params.push(Number(extra.linked_job_id));
+  }
+  params.push(Number(id));
   await query(
-    `
-      UPDATE suggested_actions
-      SET
-        status = ?,
-        reviewed_by = ?,
-        reviewed_at = CURRENT_TIMESTAMP,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-      LIMIT 1
-    `,
-    [String(status || "new"), reviewedBy ? String(reviewedBy) : null, Number(id)]
+    `UPDATE suggested_actions SET ${sets.join(", ")} WHERE id = ? LIMIT 1`,
+    params
   );
 }
 

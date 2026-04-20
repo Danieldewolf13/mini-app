@@ -936,6 +936,38 @@ app.post("/dispatcher/suggested-actions/:id/reject", requireAuthPage, requireNav
   res.redirect("/dispatcher/dashboard");
 });
 
+app.post("/dispatcher/suggested-actions/:id/create-job", requireAuthPage, requireNavAccess("dashboard"), async (req, res) => {
+  if (!canReviewSuggestedActions(req.authUser)) {
+    res.status(403).send("Geen toegang");
+    return;
+  }
+
+  const address = String(req.body.address || "").trim();
+  if (!address) {
+    res.redirect("/dispatcher/dashboard");
+    return;
+  }
+
+  const reviewer = req.authUser?.username || req.authUser?.name || "unknown";
+
+  try {
+    const cardId = await createQuickJob({
+      address,
+      clientName: String(req.body.client_name || "").trim() || null,
+      phone: String(req.body.phone || "").trim() || null,
+      category: "Dringend",
+      problemType: String(req.body.problem_type || "").trim() || null,
+      createdBy: req.authUser?.tg_id || 0,
+    });
+
+    await updateSuggestedActionStatus(req.params.id, "applied", reviewer, { linked_card_id: cardId });
+  } catch (err) {
+    console.error("[create-job] mislukt:", err.message);
+  }
+
+  res.redirect("/dispatcher/dashboard");
+});
+
 app.get("/api/planning", requireAuthApi, async (req, res) => {
   try {
     const payload = scopePlanningPayload(await getPlanningData(req.query.date, req.query.view), req.authUser);
