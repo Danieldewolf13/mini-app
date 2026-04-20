@@ -41,8 +41,11 @@ async function upsertCalendarEvent({ techKey, eventId, title, description, addre
   const calendarId = getCalendarId(techKey);
   if (!credentials || !calendarId) return null;
 
+  let googleLib;
+  try { googleLib = require("googleapis"); } catch (_) { return null; }
+
   try {
-    const { google } = require("googleapis");
+    const { google } = googleLib;
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ["https://www.googleapis.com/auth/calendar"],
@@ -81,8 +84,11 @@ async function deleteCalendarEvent({ techKey, eventId }) {
   const calendarId = getCalendarId(techKey);
   if (!credentials || !calendarId) return false;
 
+  let googleLib;
+  try { googleLib = require("googleapis"); } catch (_) { return false; }
+
   try {
-    const { google } = require("googleapis");
+    const { google } = googleLib;
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ["https://www.googleapis.com/auth/calendar"],
@@ -104,8 +110,11 @@ async function fetchUpcomingCalendarEvents(techKeys, daysAhead = 7) {
   const credentials = getCredentials();
   if (!credentials) return [];
 
+  let googleLib;
+  try { googleLib = require("googleapis"); } catch (_) { return []; }
+
   try {
-    const { google } = require("googleapis");
+    const { google } = googleLib;
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ["https://www.googleapis.com/auth/calendar.readonly"],
