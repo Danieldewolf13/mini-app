@@ -20,7 +20,7 @@ const rows = telegramUsers.map((u) => {
       </td>
       <td>${esc(u.tech_key || "—")}</td>
       <td>
-        <form method="post" action="/dispatcher/techniekers/${esc(u.tg_id || "0")}/update" class="inline-form" style="display:flex;gap:6px;align-items:center">
+        <form method="post" action="/dispatcher/technicians/${esc(u.tg_id || "0")}/update" class="inline-form" style="display:flex;gap:6px;align-items:center">
           <select name="tech_key" class="sa-input">
             <option value="">— geen —</option>
             ${opts}
@@ -64,7 +64,7 @@ const body = `
           <h2>Technieker toevoegen</h2>
         </div>
       </div>
-      <form method="post" action="/dispatcher/techniekers/add" class="users-form">
+      <form method="post" action="/dispatcher/technicians/add" class="users-form">
         <label class="auth-field">
           <span>Volledige naam *</span>
           <input type="text" name="full_name" required placeholder="bv. Armadeos Janssen">

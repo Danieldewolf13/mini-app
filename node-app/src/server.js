@@ -675,15 +675,33 @@ function renderCalendarPage(req, res) {
 app.get("/dispatcher/kalender", requireAuthPage, requireNavAccess("calendar"), renderCalendarPage);
 app.get("/dispatcher/calendar",  requireAuthPage, requireNavAccess("calendar"), renderCalendarPage);
 
-app.get("/dispatcher/technicians", requireAuthPage, requireNavAccess("technicians"), (req, res) => {
-  renderPlaceholder(
-    res,
-    "technicians",
-    "Technicians",
-    "Techniekerbeheer komt op deze pagina zodra de basisstructuur vastligt.",
-    serializeUser(req.authUser),
-    req.userPreferences
-  );
+app.get("/dispatcher/technicians", requireAuthPage, requireNavAccess("technicians"), async (req, res, next) => {
+  try {
+    const telegramUsers = await fetchAllTelegramUsers();
+    const { CALENDAR_MAP } = require("./googleCalendar");
+    const techKeyOptions = Object.keys(CALENDAR_MAP);
+    res.render(
+      "dispatcher/techniekers",
+      baseViewModel({
+        pageTitle: "Techniekers",
+        activeNav: "technicians",
+        currentUser: serializeUser(req.authUser),
+        currentPreferences: req.userPreferences,
+        success: req.query.success || null,
+        error: req.query.error || null,
+        telegramUsers,
+        techKeyOptions,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Keep old URL working too
+app.get("/dispatcher/techniekers", requireAuthPage, requireNavAccess("technicians"), (req, res) => {
+  const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+  res.redirect("/dispatcher/technicians" + qs);
 });
 
 app.get("/dispatcher/documents", requireAuthPage, requireNavAccess("documents"), (req, res) => {
@@ -797,53 +815,31 @@ app.post("/dispatcher/users/:username/toggle", requireAuthPage, requireNavAccess
   }
 });
 
-// ── Telegram users management ──────────────────────────────────────────────
+// ── Technician management POST routes ─────────────────────────────────────
 
-app.get("/dispatcher/techniekers", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
-  try {
-    const telegramUsers = await fetchAllTelegramUsers();
-    const { CALENDAR_MAP } = require("./googleCalendar");
-    const techKeyOptions = Object.keys(CALENDAR_MAP);
-    res.render(
-      "dispatcher/techniekers",
-      baseViewModel({
-        pageTitle: "Techniekers beheer",
-        activeNav: "users",
-        currentUser: serializeUser(req.authUser),
-        currentPreferences: req.userPreferences,
-        success: req.query.success || null,
-        telegramUsers,
-        techKeyOptions,
-      })
-    );
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/dispatcher/techniekers/add", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
+app.post("/dispatcher/technicians/add", requireAuthPage, requireNavAccess("technicians"), async (req, res, next) => {
   try {
     const fullName = String(req.body.full_name || "").trim();
     const techKey = String(req.body.tech_key || "").trim();
     const tgId = req.body.tg_id ? Number(req.body.tg_id) : null;
     if (!fullName || !techKey) {
-      res.redirect("/dispatcher/techniekers?error=Naam+en+code+zijn+verplicht");
+      res.redirect("/dispatcher/technicians?error=Naam+en+code+zijn+verplicht");
       return;
     }
     await addManualTechnician({ fullName, techKey, tgId });
-    res.redirect("/dispatcher/techniekers?success=Technieker+toegevoegd");
+    res.redirect("/dispatcher/technicians?success=Technieker+toegevoegd");
   } catch (error) {
     next(error);
   }
 });
 
-app.post("/dispatcher/techniekers/:tgId/update", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
+app.post("/dispatcher/technicians/:tgId/update", requireAuthPage, requireNavAccess("technicians"), async (req, res, next) => {
   try {
     const tgId = Number(req.params.tgId);
     const techKey = req.body.tech_key === "" ? null : String(req.body.tech_key || "").trim() || null;
     const isActive = req.body.is_active === "1";
     await updateTelegramUser({ tgId, techKey, isActive });
-    res.redirect("/dispatcher/techniekers?success=Technieker+bijgewerkt");
+    res.redirect("/dispatcher/technicians?success=Technieker+bijgewerkt");
   } catch (error) {
     next(error);
   }
