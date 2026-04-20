@@ -7,14 +7,14 @@
     <a class="section-link" href="/dispatcher/technicians"><%= t("common.view_all", "View all") %></a>
   </div>
 
-  <p class="section-meta">Who is free right now and who already has active work.</p>
+  <p class="section-meta">Wie is vrij en wie heeft al actieve jobs.</p>
 
   <div class="tech-list tech-preview">
     <% if (technicians.length) { %>
       <% technicians.slice(0, 6).forEach((tech) => { %>
         <div class="tech-card <%= Number(tech.active_jobs) === 0 ? 'free' : Number(tech.active_jobs) >= 3 ? 'loaded' : 'busy' %>">
           <div><%= tech.full_name %></div>
-          <div><%= Number(tech.active_jobs) === 0 ? "Free" : `${tech.active_jobs} active` %></div>
+          <div><%= Number(tech.active_jobs) === 0 ? "Vrij" : `${tech.active_jobs} actief` %></div>
           <div><%= tech.tech_key || tech.role %></div>
         </div>
       <% }) %>

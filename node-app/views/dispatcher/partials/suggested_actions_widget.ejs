@@ -9,7 +9,25 @@
 
   <% if (suggestedActions.length) { %>
     <div class="suggested-actions-list">
-      <% suggestedActions.slice(0, 15).forEach((item) => {
+      <%
+        const intentLabels = {
+          create_urgent_job: 'Dringende job aanmaken',
+          create_scheduled_job: 'Geplande job aanmaken',
+          update_status: 'Status bijwerken',
+          cancel_job_request: 'Job annuleren',
+          stalled_job_flag: 'Job geblokkeerd',
+          reassign_job_request: 'Technieker herwijzen',
+          submit_invoice_data: 'Factuurgegevens',
+          register_quick_payment: 'Betaling registreren',
+          payment_proof_received: 'Betalingsbewijs ontvangen',
+          material_request: 'Materiaalverzoek',
+          material_update: 'Materiaalupdate',
+          quote_request: 'Offerte aangevraagd',
+          quote_update: 'Offerte bijwerken',
+          document_request: 'Document gevraagd',
+          signed_document_received: 'Getekend document ontvangen',
+        };
+        suggestedActions.slice(0, 15).forEach((item) => {
            const fields = item.parsed_fields || {};
            const address = fields.address || fields.adres || fields.address_raw || fields.locatie || fields.location || "";
            const clientName = fields.customer_name || fields.client_name || fields.klant || fields.naam || "";
@@ -17,11 +35,12 @@
            const problemType = fields.problem_type || fields.probleem || fields.omschrijving || fields.description || "";
            const isJobCreate = item.intent === 'create_urgent_job' || item.intent === 'create_scheduled_job';
            const failedCreate = isJobCreate && item.status === 'new' && !item.linked_job_id;
+           const intentLabel = intentLabels[item.intent] || item.intent;
       %>
         <article class="suggested-action-card status-<%= item.status %>">
           <div class="suggested-action-topline">
             <div>
-              <strong><%= item.intent %></strong>
+              <strong><%= intentLabel %></strong>
               <% if (item.linked_job_id) { %><span class="sa-job-link">→ Job #<%= item.linked_job_id %></span><% } %>
             </div>
             <% if (item.status === 'applied' && item.reviewed_by === 'karen-auto') { %>
@@ -43,7 +62,7 @@
           <% } %>
 
           <div class="suggested-action-meta">
-            <span><%= item.link_status %> · <%= Number(item.confidence || 0).toFixed(0) %>%</span>
+            <span><%= item.link_status === 'exact' ? 'Gekoppeld' : item.link_status === 'unlinked' ? 'Niet gekoppeld' : item.link_status %> · <%= Number(item.confidence || 0).toFixed(0) %>%</span>
             <% if (item.reason_for_confirmation) { %>
               <span class="sa-reason"><%= item.reason_for_confirmation %></span>
             <% } %>

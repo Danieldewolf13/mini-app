@@ -12,12 +12,12 @@ function escapeHtml(value) {
 function renderJobOverview(data) {
   return `
     <div><strong>Status</strong><span>${escapeHtml(data.status_label)}</span></div>
-    <div><strong>Technician</strong><span>${escapeHtml(data.technician)}</span></div>
-    <div><strong>Phone</strong><span>${escapeHtml(data.phone)}</span></div>
-    <div><strong>Address</strong><span>${escapeHtml(data.address)}</span></div>
-    <div><strong>Category</strong><span>${escapeHtml(data.category)}</span></div>
-    <div><strong>Problem</strong><span>${escapeHtml(data.problem)}</span></div>
-    <div><strong>Created</strong><span>${escapeHtml(data.created_at)}</span></div>
+    <div><strong>Technieker</strong><span>${escapeHtml(data.technician)}</span></div>
+    <div><strong>Telefoon</strong><span>${escapeHtml(data.phone)}</span></div>
+    <div><strong>Adres</strong><span>${escapeHtml(data.address)}</span></div>
+    <div><strong>Categorie</strong><span>${escapeHtml(data.category)}</span></div>
+    <div><strong>Probleem</strong><span>${escapeHtml(data.problem)}</span></div>
+    <div><strong>Aangemaakt</strong><span>${escapeHtml(data.created_at)}</span></div>
   `;
 }
 
@@ -38,10 +38,10 @@ function renderJobDocuments(data) {
 
 function renderJobFinance(data) {
   const appointmentHtml = data.next_appointment
-    ? `<div><strong>Next appointment</strong><span>${escapeHtml(data.next_appointment.scheduled_at)} - ${escapeHtml(
+    ? `<div><strong>Volgende afspraak</strong><span>${escapeHtml(data.next_appointment.scheduled_at)} - ${escapeHtml(
         data.next_appointment.type
       )}</span></div>`
-    : `<div><strong>Next appointment</strong><span>Geen afspraak gepland</span></div>`;
+    : `<div><strong>Volgende afspraak</strong><span>Geen afspraak gepland</span></div>`;
 
   return data.finance_locked
     ? `
@@ -50,10 +50,10 @@ function renderJobFinance(data) {
     `
     : `
       <div><strong>Status</strong><span>${escapeHtml(data.finance.status)}</span></div>
-      <div><strong>Method</strong><span>${escapeHtml(data.finance.method)}</span></div>
-      <div><strong>Invoice</strong><span>${escapeHtml(data.finance.invoice)}</span></div>
-      <div><strong>Amount</strong><span>${escapeHtml(data.finance.amount_excl_vat)}</span></div>
-      <div><strong>Receiver</strong><span>${escapeHtml(data.finance.receiver)}</span></div>
+      <div><strong>Betaalmethode</strong><span>${escapeHtml(data.finance.method)}</span></div>
+      <div><strong>Factuur</strong><span>${escapeHtml(data.finance.invoice)}</span></div>
+      <div><strong>Bedrag</strong><span>${escapeHtml(data.finance.amount_excl_vat)}</span></div>
+      <div><strong>Ontvanger</strong><span>${escapeHtml(data.finance.receiver)}</span></div>
       ${appointmentHtml}
     `;
 }

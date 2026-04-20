@@ -1013,19 +1013,19 @@ async function buildJobDetailPayload(id) {
   const documents = [];
   if (latestAppointment) {
     documents.push({
-      name: `Appointment Â· ${formatAfspraakType(latestAppointment.afspraak_type)}`,
+      name: `Afspraak · ${formatAfspraakType(latestAppointment.afspraak_type)}`,
       verified: latestAppointment.status || "-",
     });
   }
   if (job.invoice_number) {
     documents.push({
-      name: `Invoice Â· ${job.invoice_number}`,
-      verified: "linked",
+      name: `Factuur · ${job.invoice_number}`,
+      verified: "gekoppeld",
     });
   } else if (["partial", "paid_full", "waiting_confirmation"].includes(job.payment_status)) {
     documents.push({
-      name: "Invoice",
-      verified: "missing",
+      name: "Factuur",
+      verified: "ontbreekt",
     });
   }
   const finance = {
@@ -1037,7 +1037,7 @@ async function buildJobDetailPayload(id) {
   };
   const assignmentOptions = (await fetchPlanningTechnicians()).map((technician) => ({
     value: technician.tg_id,
-    label: `${technician.full_name} Â· ${technician.tech_key || "-"}`,
+    label: `${technician.full_name} · ${technician.tech_key || "-"}`,
   }));
   const statusOptions = [
     { value: "new", label: formatStatus("new") },
@@ -1060,14 +1060,14 @@ async function buildJobDetailPayload(id) {
     { value: "cancelled", label: "Geannuleerd" },
   ];
   const actions = {
-    assign_label: job.technician ? "Reassign technician" : "Assign technician",
-    status_label: `Update status Â· ${job.status_label}`,
+    assign_label: job.technician ? "Technieker herwijzen" : "Technieker toewijzen",
+    status_label: `Status wijzigen · ${job.status_label}`,
     status_value: job.status,
     status_options: statusOptions,
     technician_value: job.technician_id,
     assignment_options: assignmentOptions,
     appointment: {
-      label: latestAppointment ? "Appointment aanpassen" : "Appointment plannen",
+      label: latestAppointment ? "Afspraak aanpassen" : "Afspraak plannen",
       scheduled_at_value: formatDateTimeFieldValue(latestAppointment?.scheduled_at),
       type_value: latestAppointment?.afspraak_type || "material",
       status_value: latestAppointment?.status || "scheduled",

@@ -1,22 +1,22 @@
 <section class="panel filters-panel">
   <div class="filters">
-    <input id="job-search" placeholder="Search" />
+    <input id="job-search" placeholder="Zoeken" />
     <select id="status-filter" name="status">
-      <option value="">All statuses</option>
+      <option value="">Alle statussen</option>
       <% filters.statuses.forEach((status) => { %>
         <option value="<%= status %>"><%= status %></option>
       <% }) %>
     </select>
     <select id="technician-filter" name="technician">
-      <option value="">All technicians</option>
+      <option value="">Alle techniekers</option>
       <% filters.technicians.forEach((tech) => { %>
         <option value="<%= tech.name %>"><%= tech.name %></option>
       <% }) %>
     </select>
     <select id="date-filter" name="date">
-      <option value="">Any date</option>
-      <option value="today">Today</option>
-      <option value="older">Older</option>
+      <option value="">Alle datums</option>
+      <option value="today">Vandaag</option>
+      <option value="older">Ouder</option>
     </select>
   </div>
 </section>

@@ -60,11 +60,11 @@ const navigation = [
   { href: "/dispatcher/jobs", labelKey: "nav.jobs", fallbackLabel: "Jobs", key: "jobs" },
   { href: "/dispatcher/planning", labelKey: "nav.planning", fallbackLabel: "Planning", key: "planning" },
   { href: "/dispatcher/kalender", labelKey: "nav.calendar", fallbackLabel: "Kalender", key: "calendar" },
-  { href: "/dispatcher/technicians", labelKey: "nav.technicians", fallbackLabel: "Technicians", key: "technicians" },
-  { href: "/dispatcher/documents", labelKey: "nav.documents", fallbackLabel: "Documents", key: "documents" },
-  { href: "/dispatcher/finance", labelKey: "nav.finance", fallbackLabel: "Finance", key: "finance" },
-  { href: "/dispatcher/users", labelKey: "nav.users", fallbackLabel: "Users", key: "users" },
-  { href: "/dispatcher/settings", labelKey: "nav.settings", fallbackLabel: "Settings", key: "settings" },
+  { href: "/dispatcher/technicians", labelKey: "nav.technicians", fallbackLabel: "Techniekers", key: "technicians" },
+  { href: "/dispatcher/documents", labelKey: "nav.documents", fallbackLabel: "Documenten", key: "documents" },
+  { href: "/dispatcher/finance", labelKey: "nav.finance", fallbackLabel: "Financiën", key: "finance" },
+  { href: "/dispatcher/users", labelKey: "nav.users", fallbackLabel: "Gebruikers", key: "users" },
+  { href: "/dispatcher/settings", labelKey: "nav.settings", fallbackLabel: "Instellingen", key: "settings" },
 ];
 
 app.set("view engine", "ejs");

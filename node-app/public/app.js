@@ -108,7 +108,7 @@ function filterJobCards() {
   });
 
   if (visibleCount) {
-    visibleCount.textContent = `${visible} active jobs visible`;
+    visibleCount.textContent = `${visible} zichtbare jobs`;
   }
 }
 
