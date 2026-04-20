@@ -11,6 +11,7 @@ const {
   createQuickJob,
   ensureSuggestedActionsSchema,
   fetchActiveTechnicianLocations,
+  fetchAllTelegramUsers,
   fetchPlanningTechnicians,
   fetchSuggestedActionById,
   findJobByChatId,
@@ -21,6 +22,7 @@ const {
   updateJobAppointment,
   updateJobStatus,
   updateSuggestedActionStatus,
+  updateTelegramUser,
   upsertTechnicianLocation,
 } = require("./repository");
 const { getPlanningData } = require("./services/planningService");
@@ -789,6 +791,42 @@ app.post("/dispatcher/users/:username/toggle", requireAuthPage, requireNavAccess
       actor: req.authUser,
     });
     res.redirect("/dispatcher/users?success=Gebruikersstatus bijgewerkt");
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ── Telegram users management ──────────────────────────────────────────────
+
+app.get("/dispatcher/techniekers", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
+  try {
+    const telegramUsers = await fetchAllTelegramUsers();
+    const { CALENDAR_MAP } = require("./googleCalendar");
+    const techKeyOptions = Object.keys(CALENDAR_MAP);
+    res.render(
+      "dispatcher/techniekers",
+      baseViewModel({
+        pageTitle: "Techniekers beheer",
+        activeNav: "users",
+        currentUser: serializeUser(req.authUser),
+        currentPreferences: req.userPreferences,
+        success: req.query.success || null,
+        telegramUsers,
+        techKeyOptions,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/dispatcher/techniekers/:tgId/update", requireAuthPage, requireNavAccess("users"), async (req, res, next) => {
+  try {
+    const tgId = Number(req.params.tgId);
+    const techKey = req.body.tech_key === "" ? null : String(req.body.tech_key || "").trim() || null;
+    const isActive = req.body.is_active === "1";
+    await updateTelegramUser({ tgId, techKey, isActive });
+    res.redirect("/dispatcher/techniekers?success=Technieker bijgewerkt");
   } catch (error) {
     next(error);
   }

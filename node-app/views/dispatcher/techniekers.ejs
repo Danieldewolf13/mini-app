@@ -1,0 +1,70 @@
+<%
+const esc = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const rows = telegramUsers.map((u) => {
+  const opts = techKeyOptions
+    .map((k) => `<option value="${esc(k)}" ${String(u.tech_key || "") === k ? "selected" : ""}>${esc(k)}</option>`)
+    .join("");
+
+  return `
+    <tr class="${u.is_active ? "" : "row--inactive"}">
+      <td>
+        <strong>${esc(u.full_name || "—")}</strong>
+        <div class="users-table-meta">tg_id: ${esc(u.tg_id)}</div>
+      </td>
+      <td>
+        <form method="post" action="/dispatcher/techniekers/${esc(u.tg_id)}/update" class="inline-form">
+          <select name="tech_key" class="sa-input">
+            <option value="">— geen —</option>
+            ${opts}
+          </select>
+          <select name="is_active" class="sa-input">
+            <option value="1" ${u.is_active ? "selected" : ""}>Actief</option>
+            <option value="0" ${!u.is_active ? "selected" : ""}>Inactief</option>
+          </select>
+          <button type="submit" class="inline-button">Opslaan</button>
+        </form>
+      </td>
+    </tr>
+  `;
+}).join("");
+
+const body = `
+  <div class="users-page">
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Telegram</p>
+          <h2>Techniekers beheer</h2>
+        </div>
+        <span class="section-meta">${telegramUsers.length} Telegram-gebruikers</span>
+      </div>
+      <p class="placeholder-copy">
+        Stel hier per Telegram-gebruiker de techniekercode in. Alleen gebruikers <strong>met een code</strong> en status <strong>Actief</strong> verschijnen in de planning en op de kaart.
+      </p>
+      ${success ? `<div class="alert-banner alert-banner--success"><strong>Gelukt</strong><p>${success}</p></div>` : ""}
+    </section>
+
+    <section class="panel">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Naam</th>
+            <th>Techniekercode · Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || '<tr><td colspan="2"><p class="empty-state">Nog geen Telegram-gebruikers gevonden.</p></td></tr>'}
+        </tbody>
+      </table>
+    </section>
+  </div>
+`;
+%>
+<%- include("../layout/base", { ...locals, body }) %>

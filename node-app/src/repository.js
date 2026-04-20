@@ -204,6 +204,8 @@ async function fetchTechnicianSummary() {
      AND c.status NOT IN ('completed', 'cancelled')
     WHERE u.is_active = 1
       AND u.tg_id IS NOT NULL
+      AND u.tech_key IS NOT NULL
+      AND u.tech_key != ''
     GROUP BY u.tg_id, u.full_name, u.tech_key, u.role
     ORDER BY u.full_name ASC
   `;
@@ -221,10 +223,39 @@ async function fetchPlanningTechnicians() {
     FROM users u
     WHERE u.is_active = 1
       AND u.tg_id IS NOT NULL
+      AND u.tech_key IS NOT NULL
+      AND u.tech_key != ''
     ORDER BY u.full_name ASC
   `;
 
   return query(sql);
+}
+
+async function fetchAllTelegramUsers() {
+  const sql = `
+    SELECT
+      u.tg_id,
+      u.full_name,
+      u.tech_key,
+      u.role,
+      u.is_active,
+      u.updated_at
+    FROM users u
+    WHERE u.tg_id IS NOT NULL
+    ORDER BY u.full_name ASC
+  `;
+
+  return query(sql);
+}
+
+async function updateTelegramUser({ tgId, techKey, isActive }) {
+  const sets = [];
+  const params = [];
+  if (techKey !== undefined) { sets.push("tech_key = ?"); params.push(techKey || null); }
+  if (isActive !== undefined) { sets.push("is_active = ?"); params.push(isActive ? 1 : 0); }
+  if (!sets.length) return;
+  params.push(Number(tgId));
+  await query(`UPDATE users SET ${sets.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE tg_id = ? LIMIT 1`, params);
 }
 
 async function fetchUserByTechKey(techKey) {
@@ -1111,10 +1142,12 @@ module.exports = {
   createQuickJob,
   ensureSuggestedActionsSchema,
   fetchActiveTechnicianLocations,
+  fetchAllTelegramUsers,
   fetchSuggestedActionById,
   fetchUserById,
   fetchUserByTechKey,
   findJobByChatId,
+  updateTelegramUser,
   FORCE_CONFIRM_INTENTS,
   JOB_CREATE_INTENTS,
   fetchPlanningJobs,
