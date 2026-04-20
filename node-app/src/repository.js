@@ -236,8 +236,7 @@ async function fetchAllTelegramUsers() {
       u.full_name,
       u.tech_key,
       u.role,
-      u.is_active,
-      u.updated_at
+      u.is_active
     FROM users u
     ORDER BY u.full_name ASC
   `;
@@ -252,7 +251,7 @@ async function updateTelegramUser({ tgId, techKey, isActive }) {
   if (isActive !== undefined) { sets.push("is_active = ?"); params.push(isActive ? 1 : 0); }
   if (!sets.length) return;
   params.push(Number(tgId));
-  await query(`UPDATE users SET ${sets.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE tg_id = ? LIMIT 1`, params);
+  await query(`UPDATE users SET ${sets.join(", ")} WHERE tg_id = ? LIMIT 1`, params);
 }
 
 async function addManualTechnician({ fullName, techKey, tgId }) {
