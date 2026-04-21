@@ -277,6 +277,9 @@ async function fetchPlanningTechnicians() {
 }
 
 async function fetchAllTelegramUsers() {
+  // Only return users that have explicitly been configured as technicians
+  // (tech_key set) OR were manually added (negative synthetic tg_id).
+  // This prevents bot-users who never got a tech_key from appearing.
   const sql = `
     SELECT
       u.tg_id,
@@ -285,6 +288,8 @@ async function fetchAllTelegramUsers() {
       u.role,
       u.is_active
     FROM users u
+    WHERE (u.tech_key IS NOT NULL AND u.tech_key != '')
+       OR u.tg_id < 0
     ORDER BY u.full_name ASC
   `;
 
