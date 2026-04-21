@@ -1,0 +1,23 @@
+<%
+const body = `
+<div class="kaart-page">
+  <div class="kaart-legend">
+    <div class="kaart-legend-group">
+      <span class="kaart-dot kaart-dot--tech"></span><span>Technieker (live)</span>
+    </div>
+    <div class="kaart-legend-group">
+      <span class="kaart-dot kaart-dot--urgent"></span><span>Dringend / nieuw</span>
+    </div>
+    <div class="kaart-legend-group">
+      <span class="kaart-dot kaart-dot--progress"></span><span>Bezig</span>
+    </div>
+    <div class="kaart-legend-group">
+      <span class="kaart-dot kaart-dot--waiting"></span><span>Wacht</span>
+    </div>
+    <span class="kaart-legend-refresh" id="kaartRefreshLabel">Laden…</span>
+  </div>
+  <div id="kaartMap" class="kaart-map"></div>
+</div>
+`;
+%>
+<%- include("../layout/base", { ...locals, body }) %>

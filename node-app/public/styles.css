@@ -1792,3 +1792,70 @@ select {
 .tech-map-marker:hover {
   transform: scale(1.15);
 }
+
+/* ── Volledige kaartpagina ───────────────────────────────── */
+.content--nopad {
+  padding: 0;
+}
+
+.kaart-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px); /* 56px = topbar hoogte */
+}
+
+.kaart-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--line, #e5e7eb);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.kaart-legend-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.kaart-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.kaart-dot--tech    { background: var(--color-primary, #1a56db); border: 2px solid #fff; box-shadow: 0 0 0 1px #1a56db; }
+.kaart-dot--urgent  { background: #e74c3c; }
+.kaart-dot--progress{ background: #2980b9; }
+.kaart-dot--waiting { background: #f39c12; }
+
+.kaart-legend-refresh {
+  margin-left: auto;
+  color: var(--text-secondary, #9ca3af);
+  font-size: 11px;
+}
+
+.kaart-map {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Job-pins op de kaart */
+.job-map-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.8);
+  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+  cursor: pointer;
+  transition: transform .1s;
+}
+.job-map-marker:hover {
+  transform: scale(1.4);
+}

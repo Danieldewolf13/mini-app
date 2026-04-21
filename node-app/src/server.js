@@ -62,6 +62,7 @@ const navigation = [
   { href: "/dispatcher/jobs", labelKey: "nav.jobs", fallbackLabel: "Jobs", key: "jobs" },
   { href: "/dispatcher/planning", labelKey: "nav.planning", fallbackLabel: "Planning", key: "planning" },
   { href: "/dispatcher/kalender", labelKey: "nav.calendar", fallbackLabel: "Kalender", key: "calendar" },
+  { href: "/dispatcher/kaart", labelKey: "nav.map", fallbackLabel: "Kaart", key: "map" },
   { href: "/dispatcher/technicians", labelKey: "nav.technicians", fallbackLabel: "Techniekers", key: "technicians" },
   { href: "/dispatcher/documents", labelKey: "nav.documents", fallbackLabel: "Documenten", key: "documents" },
   { href: "/dispatcher/finance", labelKey: "nav.finance", fallbackLabel: "Financiën", key: "finance" },
@@ -689,6 +690,38 @@ function renderCalendarPage(req, res) {
 
 app.get("/dispatcher/kalender", requireAuthPage, requireNavAccess("calendar"), renderCalendarPage);
 app.get("/dispatcher/calendar",  requireAuthPage, requireNavAccess("calendar"), renderCalendarPage);
+
+app.get("/dispatcher/kaart", requireAuthPage, async (req, res, next) => {
+  try {
+    const t = createTranslator(req.userPreferences?.language);
+    const { jobs } = await loadJobsPayload();
+    // Only active jobs with an address are useful on the map
+    const mapJobs = jobs
+      .filter((j) => j.address_raw && !["completed", "cancelled", "done"].includes(j.status))
+      .map((j) => ({
+        id: j.id,
+        client: j.client,
+        address: j.address_raw,
+        status: j.status,
+        technician: j.technician_name || null,
+        phone: j.phone || null,
+        category: j.category || null,
+      }));
+    res.render(
+      "dispatcher/kaart",
+      baseViewModel({
+        pageTitle: t("nav.map", "Kaart"),
+        activeNav: "map",
+        contentClass: "content--fullwidth content--nopad",
+        jobs: mapJobs,
+        extraScripts: ["/static/kaart.js?v=1"],
+        currentPreferences: req.userPreferences,
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+});
 
 app.get("/dispatcher/technicians", requireAuthPage, requireNavAccess("technicians"), async (req, res, next) => {
   try {
