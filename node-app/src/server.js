@@ -166,15 +166,6 @@ async function reprocessStuckKarenJobs() {
       if (action.status !== "new" || action.linked_job_id) continue;
       const isJobCreate = action.intent === "create_urgent_job" || action.intent === "create_scheduled_job";
       if (!isJobCreate) continue;
-      // Auto-reject items with < 35% confidence — garbage from Karen
-      if (Number(action.confidence || 0) < 0.35) {
-        try {
-          await updateSuggestedActionStatus(action.id, "rejected", "auto-filter");
-        } catch (error) {
-          console.error(`[karen] auto-filter failed for action ${action.id}:`, error.message || String(error));
-        }
-        continue;
-      }
       try {
         await autoApplySuggestedAction(action.id);
       } catch (error) {
@@ -946,13 +937,6 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
   const result = req.body && typeof req.body === "object" ? req.body : {};
   const intent = String(result.intent || "unknown");
   const confidence = Number(result.confidence || 0);
-
-  // Drop job-creation intents with very low confidence - these are misclassified
-  // conversation messages (Karen zelf geeft aan niet zeker te zijn: < 35%)
-  if (JOB_CREATE_INTENTS.has(intent) && confidence < 0.35) {
-    res.status(200).json({ ok: true, id: null, auto_applied: false, linked_job_id: null, skipped: true, reason: "low_confidence" });
-    return;
-  }
 
   // Job creation is always assumed correct - no confirmation needed
   // For other intents: try to auto-link via group chat_id
