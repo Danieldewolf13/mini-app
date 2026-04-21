@@ -966,6 +966,18 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
     return;
   }
 
+  // For job-creation intents: skip if parsed_fields contain no address.
+  // An address-less "create job" message is garbage (e.g. random chat).
+  if (JOB_CREATE_INTENTS.has(intent)) {
+    const fields = result.parsed_fields || result.fields || {};
+    const addressKeys = ["address", "adres", "address_raw", "locatie", "location", "straat"];
+    const hasAddress = addressKeys.some((k) => fields[k] && String(fields[k]).trim());
+    if (!hasAddress) {
+      res.status(200).json({ ok: true, id: null, auto_applied: false, linked_job_id: null, skipped: true, reason: "no_address" });
+      return;
+    }
+  }
+
   const row = await createOrUpdateSuggestedAction({
     source_type: result.source_type || "telegram",
     source_chat_id: result.source_chat_id,

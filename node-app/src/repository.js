@@ -434,6 +434,7 @@ const SAFE_AUTO_APPLY_INTENTS = new Set([
   "create_scheduled_job",
   "update_status",
   "stalled_job_flag",
+  "technician_ok",         // technieker zegt "ok" → acceptatie van de job
 ]);
 
 async function findJobByChatId(chatId) {
@@ -567,6 +568,26 @@ async function autoApplySuggestedAction(id) {
   } else if (intent === "update_status") {
     const newStatus = proposedUpdates?.job_status;
     if (newStatus) await updateJobStatus(linkedJobId, newStatus);
+  } else if (intent === "technician_ok") {
+    // Technieker zegt "ok" → wijs de job toe aan die technieker
+    // source_user_id is het Telegram ID van de technieker
+    if (action.source_user_id) {
+      const techRows = await query(
+        `SELECT tg_id FROM users WHERE tg_id = ? AND is_active = 1 AND tech_key IS NOT NULL AND tech_key != '' LIMIT 1`,
+        [Number(action.source_user_id)]
+      );
+      if (techRows.length > 0) {
+        await query(
+          `UPDATE cards SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? LIMIT 1`,
+          [Number(action.source_user_id), linkedJobId]
+        );
+        // Zet status op 'in_progress' als de job nog niet bezig is
+        const jobRows = await query(`SELECT status FROM cards WHERE id = ? LIMIT 1`, [linkedJobId]);
+        if (jobRows.length > 0 && ["new", "waiting_technician"].includes(jobRows[0].status)) {
+          await updateJobStatus(linkedJobId, "in_progress");
+        }
+      }
+    }
   }
 
   await query(
