@@ -15,6 +15,7 @@ const CALENDAR_MAP = {
   RAS:         "c_5c19c5af22090250a499212495848982de6f713664f86bfaa04d358cfa9c3203@group.calendar.google.com",
   RALOCKS:     "c_0389a853493579805ffe975723109ea15e366cba0ca7ba5f5026238ccac00882@group.calendar.google.com",
   SECURELOCKS: "c_bf981a625851751c393731f8471a0c40d4a6af5695971c37037242072dfca841@group.calendar.google.com",
+  SAFELOCKS:   null,
 };
 
 function getCredentials() {

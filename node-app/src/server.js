@@ -25,6 +25,7 @@ const {
   updateJobStatus,
   updateSuggestedActionStatus,
   updateTelegramUser,
+  removeTechnicianKey,
   upsertTechnicianLocation,
 } = require("./repository");
 const { getPlanningData } = require("./services/planningService");
@@ -859,10 +860,19 @@ app.post("/dispatcher/technicians/add", requireAuthPage, requireNavAccess("techn
 app.post("/dispatcher/technicians/:tgId/update", requireAuthPage, requireNavAccess("technicians"), async (req, res, next) => {
   try {
     const tgId = Number(req.params.tgId);
-    const techKey = req.body.tech_key === "" ? null : String(req.body.tech_key || "").trim() || null;
+    const techKey = req.body.tech_key === "" ? null : String(req.body.tech_key || "").trim().toUpperCase() || null;
     const isActive = req.body.is_active === "1";
     await updateTelegramUser({ tgId, techKey, isActive });
     res.redirect("/dispatcher/technicians?success=Technieker+bijgewerkt");
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/dispatcher/technicians/:tgId/remove", requireAuthPage, requireNavAccess("technicians"), async (req, res, next) => {
+  try {
+    await removeTechnicianKey(Number(req.params.tgId));
+    res.redirect("/dispatcher/technicians?success=Technieker+verwijderd");
   } catch (error) {
     next(error);
   }

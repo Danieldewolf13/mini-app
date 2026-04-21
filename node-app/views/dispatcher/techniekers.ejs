@@ -8,23 +8,18 @@ const esc = (value) =>
     .replace(/'/g, "&#39;");
 
 const rows = telegramUsers.map((u) => {
-  const opts = techKeyOptions
-    .map((k) => `<option value="${esc(k)}" ${String(u.tech_key || "") === k ? "selected" : ""}>${esc(k)}</option>`)
-    .join("");
-
+  const currentKey = esc(u.tech_key || "");
   return `
     <tr class="${u.is_active ? "" : "row--inactive"}">
       <td>
         <strong>${esc(u.full_name || "—")}</strong>
-        ${u.tg_id ? `<div class="users-table-meta">tg_id: ${esc(u.tg_id)}</div>` : '<div class="users-table-meta">Handmatig toegevoegd</div>'}
+        <div class="users-table-meta">${u.tg_id > 0 ? "tg_id: " + esc(String(u.tg_id)) : "Handmatig toegevoegd"}</div>
       </td>
-      <td>${esc(u.tech_key || "—")}</td>
+      <td><code>${currentKey || "—"}</code></td>
       <td>
-        <form method="post" action="/dispatcher/technicians/${esc(u.tg_id || "0")}/update" class="inline-form" style="display:flex;gap:6px;align-items:center">
-          <select name="tech_key" class="sa-input">
-            <option value="">— geen —</option>
-            ${opts}
-          </select>
+        <form method="post" action="/dispatcher/technicians/${esc(String(u.tg_id))}/update" class="inline-form" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <input type="text" name="tech_key" value="${currentKey}" placeholder="bv. ARBI" maxlength="30"
+            style="width:90px;padding:4px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-transform:uppercase">
           <select name="is_active" class="sa-input">
             <option value="1" ${u.is_active ? "selected" : ""}>Actief</option>
             <option value="0" ${!u.is_active ? "selected" : ""}>Inactief</option>
@@ -32,13 +27,15 @@ const rows = telegramUsers.map((u) => {
           <button type="submit" class="inline-button">Opslaan</button>
         </form>
       </td>
+      <td>
+        <form method="post" action="/dispatcher/technicians/${esc(String(u.tg_id))}/remove"
+          onsubmit="return confirm('Verwijder ${esc(u.full_name || "deze technieker")} uit de lijst?')">
+          <button type="submit" class="inline-button is-secondary" style="color:#c0392b;border-color:#c0392b">Verwijderen</button>
+        </form>
+      </td>
     </tr>
   `;
 }).join("");
-
-const addOpts = techKeyOptions
-  .map((k) => `<option value="${esc(k)}">${esc(k)}</option>`)
-  .join("");
 
 const body = `
   <div class="users-page">
@@ -51,7 +48,8 @@ const body = `
         <span class="section-meta">${telegramUsers.length} techniekers</span>
       </div>
       <p class="placeholder-copy">
-        Alleen techniekers met een <strong>techniekercode</strong> en status <strong>Actief</strong> verschijnen in de planning, op de kaart en in job-toewijzing.
+        Alleen techniekers met een <strong>code</strong> en status <strong>Actief</strong> verschijnen in de planning, jobs en kaart.
+        Gebruik <strong>Verwijderen</strong> om iemand volledig uit de lijst te halen.
       </p>
       ${success ? `<div class="alert-banner alert-banner--success"><strong>Gelukt</strong><p>${success}</p></div>` : ""}
       ${locals.error ? `<div class="alert-banner"><strong>Fout</strong><p>${locals.error}</p></div>` : ""}
@@ -70,15 +68,12 @@ const body = `
           <input type="text" name="full_name" required placeholder="bv. Armadeos Janssen">
         </label>
         <label class="auth-field">
-          <span>Techniekercode *</span>
-          <select name="tech_key" required>
-            <option value="">— kies code —</option>
-            ${addOpts}
-          </select>
+          <span>Techniekercode * (bv. ARBI, MANS, SAFELOCKS)</span>
+          <input type="text" name="tech_key" required placeholder="bv. ARBI" maxlength="30" style="text-transform:uppercase">
         </label>
         <label class="auth-field">
-          <span>Telegram ID (optioneel)</span>
-          <input type="number" name="tg_id" placeholder="bv. 123456789 — laat leeg als onbekend">
+          <span>Telegram ID (optioneel — laat leeg als onbekend)</span>
+          <input type="number" name="tg_id" placeholder="bv. 123456789">
         </label>
         <button class="auth-submit" type="submit">Toevoegen</button>
       </form>
@@ -95,12 +90,13 @@ const body = `
         <thead>
           <tr>
             <th>Naam</th>
-            <th>Code</th>
+            <th>Huidige code</th>
             <th>Code aanpassen · Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          ${rows || '<tr><td colspan="3"><p class="empty-state">Nog geen techniekers gevonden. Voeg ze hierboven toe.</p></td></tr>'}
+          ${rows || '<tr><td colspan="4"><p class="empty-state">Nog geen techniekers. Voeg ze hierboven toe.</p></td></tr>'}
         </tbody>
       </table>
     </section>

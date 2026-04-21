@@ -306,6 +306,17 @@ async function updateTelegramUser({ tgId, techKey, isActive }) {
   await query(`UPDATE users SET ${sets.join(", ")} WHERE tg_id = ? LIMIT 1`, params);
 }
 
+async function removeTechnicianKey(tgId) {
+  // Wis tech_key zodat de gebruiker niet meer als technieker verschijnt.
+  // Voor negatieve (handmatig toegevoegde) IDs: verwijder de rij volledig.
+  const id = Number(tgId);
+  if (id < 0) {
+    await query(`DELETE FROM users WHERE tg_id = ? LIMIT 1`, [id]);
+  } else {
+    await query(`UPDATE users SET tech_key = NULL, is_active = 0 WHERE tg_id = ? LIMIT 1`, [id]);
+  }
+}
+
 async function addManualTechnician({ fullName, techKey, tgId }) {
   // If no tgId provided, generate a synthetic negative ID to avoid conflicts with real Telegram IDs
   let resolvedTgId = tgId ? Number(tgId) : null;
@@ -1260,6 +1271,7 @@ module.exports = {
   fetchUserByTechKey,
   findJobByChatId,
   updateTelegramUser,
+  removeTechnicianKey,
   FORCE_CONFIRM_INTENTS,
   JOB_CREATE_INTENTS,
   fetchPlanningJobs,
