@@ -52,7 +52,7 @@ const ACTIVE_JOB_SELECT = `
 async function fetchActiveJobs() {
   const sql = `
     ${ACTIVE_JOB_SELECT}
-    WHERE c.status NOT IN ('completed', 'cancelled')
+    WHERE c.status NOT IN ('completed', 'cancelled', 'done')
     ORDER BY c.created_at DESC, c.id DESC
     LIMIT 250
   `;
@@ -124,13 +124,22 @@ function buildUpcomingPreview(appointments) {
   return appointments.slice(0, 4);
 }
 
+async function ensureAppointmentCalendarSchema() {
+  const columns = await query("SHOW COLUMNS FROM afspraak LIKE 'calendar_event_id'");
+  if (!columns.length) {
+    await query("ALTER TABLE afspraak ADD COLUMN calendar_event_id VARCHAR(191) NULL AFTER status");
+  }
+}
+
 async function fetchAppointmentsByJobId(id) {
+  await ensureAppointmentCalendarSchema();
   const sql = `
     SELECT
       id,
       scheduled_at,
       afspraak_type,
       status,
+      calendar_event_id,
       created_at
     FROM afspraak
     WHERE card_id = ${Number(id)}
@@ -138,6 +147,39 @@ async function fetchAppointmentsByJobId(id) {
   `;
 
   return query(sql);
+}
+
+async function fetchAppointmentById(id) {
+  await ensureAppointmentCalendarSchema();
+  const rows = await query(
+    `
+      SELECT
+        id,
+        scheduled_at,
+        afspraak_type,
+        status,
+        calendar_event_id,
+        created_at
+      FROM afspraak
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [Number(id)]
+  );
+  return rows[0] || null;
+}
+
+async function updateAppointmentCalendarEventId(appointmentId, eventId) {
+  await ensureAppointmentCalendarSchema();
+  await query(
+    `
+      UPDATE afspraak
+      SET calendar_event_id = ?
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [eventId || null, Number(appointmentId)]
+  );
 }
 
 async function updateJobStatus(jobId, status) {
@@ -165,6 +207,7 @@ async function assignJobTechnician(jobId, technicianId) {
 }
 
 async function updateJobAppointment(jobId, { scheduledAt, afspraakType, status }) {
+  await ensureAppointmentCalendarSchema();
   const appointments = await fetchAppointmentsByJobId(jobId);
   const latestAppointment = appointments[0] || null;
 
@@ -178,18 +221,22 @@ async function updateJobAppointment(jobId, { scheduledAt, afspraakType, status }
       `,
       [scheduledAt, afspraakType, status, Number(latestAppointment.id)]
     );
-    return;
+    return fetchAppointmentById(latestAppointment.id);
   }
 
-  await query(
-    `
-      INSERT INTO afspraak (card_id, scheduled_at, afspraak_type, status, created_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `,
-    [Number(jobId), scheduledAt, afspraakType, status]
-  );
-}
+  const insertedId = await withConnection(async (connection) => {
+    const [result] = await connection.query(
+      `
+        INSERT INTO afspraak (card_id, scheduled_at, afspraak_type, status, created_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `,
+      [Number(jobId), scheduledAt, afspraakType, status]
+    );
+    return result.insertId;
+  });
 
+  return fetchAppointmentById(insertedId);
+}
 async function fetchTechnicianSummary() {
   const sql = `
     SELECT
@@ -201,7 +248,7 @@ async function fetchTechnicianSummary() {
     FROM users u
     LEFT JOIN cards c
       ON c.assigned_to = u.tg_id
-     AND c.status NOT IN ('completed', 'cancelled')
+     AND c.status NOT IN ('completed', 'cancelled', 'done')
     WHERE u.is_active = 1
       AND u.tech_key IS NOT NULL
       AND u.tech_key != ''
@@ -341,7 +388,7 @@ async function fetchPlanningJobs(startDate, endDate) {
     WHERE a.status = 'scheduled'
       AND a.scheduled_at >= '${startDate} 00:00:00'
       AND a.scheduled_at < DATE_ADD('${endDate} 00:00:00', INTERVAL 1 DAY)
-      AND c.status NOT IN ('completed', 'cancelled')
+      AND c.status NOT IN ('completed', 'cancelled', 'done')
     ORDER BY a.scheduled_at ASC, c.id ASC
   `;
 
@@ -376,7 +423,7 @@ const SAFE_AUTO_APPLY_INTENTS = new Set([
 async function findJobByChatId(chatId) {
   if (!chatId) return null;
   const rows = await query(
-    `SELECT id, status FROM cards WHERE group_chat_id = ? AND status NOT IN ('completed', 'cancelled') ORDER BY created_at DESC LIMIT 1`,
+    `SELECT id, status FROM cards WHERE group_chat_id = ? AND status NOT IN ('completed', 'cancelled', 'done') ORDER BY created_at DESC LIMIT 1`,
     [String(chatId)]
   );
   return rows[0] || null;
@@ -1123,6 +1170,7 @@ async function buildJobDetailPayload(id) {
   return {
     id: job.id,
     technician_id: job.technician_id,
+    tech_key: job.tech_key || null,
     client: job.client,
     phone: job.phone || "-",
     address: job.address_raw || "-",
@@ -1213,10 +1261,13 @@ module.exports = {
   fetchPlanningTechnicians,
   listSuggestedActions,
   SAFE_AUTO_APPLY_INTENTS,
+  updateAppointmentCalendarEventId,
   updateJobAppointment,
   updateJobStatus,
   updateSuggestedActionStatus,
   upsertTechnicianLocation,
 };
+
+
 
 

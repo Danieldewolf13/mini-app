@@ -20,6 +20,7 @@ const {
   JOB_CREATE_INTENTS,
   listSuggestedActions,
   SAFE_AUTO_APPLY_INTENTS,
+  updateAppointmentCalendarEventId,
   updateJobAppointment,
   updateJobStatus,
   updateSuggestedActionStatus,
@@ -27,7 +28,7 @@ const {
   upsertTechnicianLocation,
 } = require("./repository");
 const { getPlanningData } = require("./services/planningService");
-const { upsertCalendarEvent, fetchUpcomingCalendarEvents } = require("./googleCalendar");
+const { deleteCalendarEvent, upsertCalendarEvent, fetchUpcomingCalendarEvents } = require("./googleCalendar");
 const { createTranslator } = require("./i18n");
 const { ensurePreferencesSchema, getUserPreferences, saveUserPreferences, sanitizePreferences } = require("./preferences");
 const {
@@ -151,8 +152,9 @@ async function loadSuggestedActions() {
     // Reprocess any stuck create-job items before loading the list
     await reprocessStuckKarenJobs();
     return await listSuggestedActions(20);
-  } catch (_error) {
-    return [];
+  } catch (error) {
+    console.error("[karen] loadSuggestedActions failed:", error.message || String(error));
+    throw error;
   }
 }
 
@@ -167,20 +169,22 @@ async function reprocessStuckKarenJobs() {
       if (Number(action.confidence || 0) < 0.35) {
         try {
           await updateSuggestedActionStatus(action.id, "rejected", "auto-filter");
-        } catch (_e) { /* non-fatal */ }
+        } catch (error) {
+          console.error(`[karen] auto-filter failed for action ${action.id}:`, error.message || String(error));
+        }
         continue;
       }
       try {
         await autoApplySuggestedAction(action.id);
-      } catch (_err) {
-        // non-fatal
+      } catch (error) {
+        console.error(`[karen] auto-apply retry failed for action ${action.id}:`, error.message || String(error));
       }
     }
-  } catch (_err) {
-    // non-fatal
+  } catch (error) {
+    console.error("[karen] reprocessStuckKarenJobs failed:", error.message || String(error));
+    throw error;
   }
 }
-
 function canReviewSuggestedActions(user) {
   return Boolean(user && (user.role === "admin" || user.role === "dispatcher"));
 }
@@ -607,7 +611,17 @@ app.post("/logout", (req, res) => {
 
 app.get("/dispatcher/dashboard", requireAuthPage, requireNavAccess("dashboard"), async (req, res) => {
   const payload = scopeDashboardPayload(await loadDashboardPayload(), req.authUser);
-  const suggestedActions = canReviewSuggestedActions(req.authUser) ? await loadSuggestedActions() : [];
+  let suggestedActions = [];
+  let suggestedActionsError = null;
+
+  if (canReviewSuggestedActions(req.authUser)) {
+    try {
+      suggestedActions = await loadSuggestedActions();
+    } catch (error) {
+      suggestedActionsError = error.message || String(error);
+    }
+  }
+
   res.render(
     "dispatcher/dashboard",
     baseViewModel({
@@ -617,10 +631,12 @@ app.get("/dispatcher/dashboard", requireAuthPage, requireNavAccess("dashboard"),
       actions: canViewFinance(req.authUser)
         ? [{ href: settings.billitBaseUrl, label: "Open Billit", variant: "ghost", external: true }]
         : [],
+      dbError: req.query.db_error || suggestedActionsError || payload.db_error || null,
       currentUser: serializeUser(req.authUser),
       currentPreferences: req.userPreferences,
       dashboardLayout: buildDashboardLayout(req.userPreferences),
       suggestedActions,
+      success: req.query.success || null,
       ...payload,
     })
   );
@@ -822,7 +838,7 @@ app.post("/dispatcher/users/:username/toggle", requireAuthPage, requireNavAccess
   }
 });
 
-// ── Technician management POST routes ─────────────────────────────────────
+// -- Technician management POST routes -------------------------------------
 
 app.post("/dispatcher/technicians/add", requireAuthPage, requireNavAccess("technicians"), async (req, res, next) => {
   try {
@@ -921,14 +937,14 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
   const intent = String(result.intent || "unknown");
   const confidence = Number(result.confidence || 0);
 
-  // Drop job-creation intents with very low confidence — these are misclassified
+  // Drop job-creation intents with very low confidence - these are misclassified
   // conversation messages (Karen zelf geeft aan niet zeker te zijn: < 35%)
   if (JOB_CREATE_INTENTS.has(intent) && confidence < 0.35) {
     res.status(200).json({ ok: true, id: null, auto_applied: false, linked_job_id: null, skipped: true, reason: "low_confidence" });
     return;
   }
 
-  // Job creation is always assumed correct — no confirmation needed
+  // Job creation is always assumed correct - no confirmation needed
   // For other intents: try to auto-link via group chat_id
   let linkedJobId = result.linked_job_id ? Number(result.linked_job_id) : null;
   let linkStatus = result.link_status || "unlinked";
@@ -940,7 +956,7 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
       if (job) {
         linkedJobId = job.id;
         linkStatus = "exact";
-        // non-financial intents with exact match → no confirmation
+        // non-financial intents with exact match -> no confirmation
         if (!FORCE_CONFIRM_INTENTS.has(intent)) needsConfirmation = false;
       }
     } catch (_err) {
@@ -949,7 +965,7 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
   }
 
   // If there's no linked job AND this isn't a job-creation or financial intent,
-  // there's nothing actionable — skip silently rather than cluttering the inbox.
+  // there's nothing actionable - skip silently rather than cluttering the inbox.
   const isActionable = JOB_CREATE_INTENTS.has(intent) || linkedJobId || FORCE_CONFIRM_INTENTS.has(intent);
   if (!isActionable) {
     res.status(200).json({ ok: true, id: null, auto_applied: false, linked_job_id: null, skipped: true });
@@ -976,6 +992,7 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
 
   // Auto-apply: job creation intents always, safe update intents when exactly linked
   let autoApplied = false;
+  let autoApplyError = null;
   const canAutoApply =
     row?.id &&
     SAFE_AUTO_APPLY_INTENTS.has(intent) &&
@@ -984,12 +1001,19 @@ app.post("/api/karen/suggested-actions", async (req, res) => {
   if (canAutoApply) {
     try {
       autoApplied = Boolean(await autoApplySuggestedAction(row.id));
-    } catch (_err) {
-      // auto-apply failure is non-fatal
+    } catch (error) {
+      autoApplyError = error.message || String(error);
+      console.error(`[karen] auto-apply failed for action ${row.id}:`, autoApplyError);
     }
   }
 
-  res.status(201).json({ ok: true, id: row?.id || null, auto_applied: autoApplied, linked_job_id: linkedJobId });
+  res.status(201).json({
+    ok: true,
+    id: row?.id || null,
+    auto_applied: autoApplied,
+    auto_apply_error: autoApplyError,
+    linked_job_id: linkedJobId,
+  });
 });
 
 
@@ -1179,33 +1203,45 @@ app.post("/api/jobs/:id/appointment", requireAuthApi, async (req, res) => {
     return;
   }
 
-  await updateJobAppointment(req.params.id, {
+  const appointment = await updateJobAppointment(req.params.id, {
     scheduledAt: scheduledAt.replace("T", " ") + ":00",
     afspraakType,
     status: appointmentStatus,
   });
 
+  const updatedPayload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
+
   // Sync to Google Calendar if a technician is assigned
-  const techKey = payload.job?.tech_key || null;
-  if (techKey && appointmentStatus !== "cancelled") {
-    const addr = payload.job?.address_raw || "";
-    const clientName = payload.job?.client_name || "";
-    const problemType = payload.job?.problem_type || "";
-    upsertCalendarEvent({
-      techKey,
-      eventId: payload.appointment?.calendar_event_id || null,
-      title: `#${req.params.id} – ${problemType || "Interventie"}`,
-      description: `Klant: ${clientName}\nAdres: ${addr}\nType: ${afspraakType}`,
-      address: addr,
-      scheduledAt,
-    }).catch(() => {});
+  const techKey = updatedPayload?.tech_key || null;
+  if (techKey) {
+    const calendarEventId = appointment?.calendar_event_id || null;
+    if (appointmentStatus === "cancelled") {
+      if (calendarEventId) {
+        await deleteCalendarEvent({ techKey, eventId: calendarEventId });
+        await updateAppointmentCalendarEventId(appointment.id, null);
+      }
+    } else {
+      const addr = updatedPayload?.address === "-" ? "" : updatedPayload?.address || "";
+      const clientName = updatedPayload?.client === "-" ? "" : updatedPayload?.client || "";
+      const problemType = updatedPayload?.problem === "-" ? "" : updatedPayload?.problem || "";
+      const nextCalendarEventId = await upsertCalendarEvent({
+        techKey,
+        eventId: calendarEventId,
+        title: `#${req.params.id} – ${problemType || "Interventie"}`,
+        description: `Klant: ${clientName}\nAdres: ${addr}\nType: ${afspraakType}`,
+        address: addr,
+        scheduledAt,
+      });
+      if (appointment?.id && nextCalendarEventId && nextCalendarEventId !== calendarEventId) {
+        await updateAppointmentCalendarEventId(appointment.id, nextCalendarEventId);
+      }
+    }
   }
 
-  const updatedPayload = scopeJobDetailPayload(await buildJobDetailPayload(req.params.id), req.authUser);
   res.json({ ok: true, job: updatedPayload });
 });
 
-// ── Quick job creation ────────────────────────────────────────────────────
+// -- Quick job creation ------------------------------------------------------
 app.post("/api/jobs", requireAuthApi, async (req, res) => {
   if (!canAssign(req.authUser)) {
     res.status(403).json({ error: "Geen toegang" });
@@ -1232,7 +1268,7 @@ app.post("/api/jobs", requireAuthApi, async (req, res) => {
     res.status(500).json({ error: err.message || "Aanmaken mislukt" });
   }
 });
-// ── Technician live locations ──────────────────────────────────────────────
+// -- Technician live locations -----------------------------------------------
 
 // POST from Telegram bot when a technician shares location in the general group
 app.post("/api/locations", async (req, res) => {
@@ -1255,7 +1291,7 @@ app.post("/api/locations", async (req, res) => {
   }
 });
 
-// GET for the mini-map — returns locations updated in last 2 hours
+// GET for the mini-map - returns locations updated in last 2 hours
 app.get("/api/locations", requireAuthApi, async (req, res) => {
   try {
     const locations = await fetchActiveTechnicianLocations();
@@ -1265,9 +1301,9 @@ app.get("/api/locations", requireAuthApi, async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
-// ── Telegram Mini App ──────────────────────────────────────────────────────
+// -- Telegram Mini App -------------------------------------------------------
 const crypto = require("crypto");
 
 function validateTelegramInitData(initData) {
@@ -1332,7 +1368,7 @@ app.post("/api/tma/auth", async (req, res) => {
   res.setHeader("Set-Cookie", buildSetCookieHeader(user, { remember: true }));
   res.json({ ok: true, user: serializeUser(user) });
 });
-// ────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, app: settings.appName });
@@ -1345,3 +1381,4 @@ if (require.main === module) {
 }
 
 module.exports = { app };
+
