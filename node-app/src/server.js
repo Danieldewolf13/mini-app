@@ -714,7 +714,8 @@ app.get("/dispatcher/kaart", requireAuthPage, async (req, res, next) => {
         activeNav: "map",
         contentClass: "content--fullwidth content--nopad",
         jobs: mapJobs,
-        extraScripts: ["/static/kaart.js?v=1"],
+        extraScripts: ["/static/kaart.js?v=2"],
+        currentUser: serializeUser(req.authUser),
         currentPreferences: req.userPreferences,
       })
     );
@@ -1266,7 +1267,7 @@ app.post("/api/jobs/:id/appointment", requireAuthApi, async (req, res) => {
       const nextCalendarEventId = await upsertCalendarEvent({
         techKey,
         eventId: calendarEventId,
-        title: `#${req.params.id} – ${problemType || "Interventie"}`,
+        title: `#${req.params.id} - ${problemType || "Interventie"}`,
         description: `Klant: ${clientName}\nAdres: ${addr}\nType: ${afspraakType}`,
         address: addr,
         scheduledAt,

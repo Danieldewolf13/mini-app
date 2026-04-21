@@ -5,6 +5,7 @@ let map;
 let focusMarker;
 const defaultMapView = { center: [50.85, 4.35], zoom: 8 };
 let mapInteractionEnabled = false;
+const jobMarkers = {};
 
 function setupSidebarToggle() {
   const toggles = Array.from(document.querySelectorAll("[data-sidebar-toggle]"));
@@ -162,6 +163,53 @@ function minutesAgo(dateStr) {
   return `${diff} min geleden`;
 }
 
+function statusColor(status) {
+  if (!status) return "#6b7484";
+  const s = String(status).toLowerCase();
+  if (["new", "urgent", "waiting_technician"].includes(s)) return "#d94841";
+  if (["in_progress", "on_site", "on_the_way"].includes(s)) return "#2f6bb2";
+  if (["waiting_dispatcher", "waiting_parts", "stalled", "assigned"].includes(s)) return "#d29a1f";
+  return "#6b7484";
+}
+
+function jobIcon(status) {
+  return L.divIcon({
+    className: "",
+    html: `<div class="job-map-marker" style="background:${statusColor(status)}"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+}
+
+async function placeJobMarkers() {
+  if (!map) return;
+
+  for (const job of jobs) {
+    const address = String(job.address_raw || job.address || "").trim();
+    if (!address) continue;
+
+    const pos = await geocodeAddress(address);
+    if (!pos || !map) continue;
+
+    const popup = [
+      `<strong>#${escapeHtml(job.id)} - ${escapeHtml(job.client || "Onbekend")}</strong>`,
+      `<span>${escapeHtml(address)}</span>`,
+      job.technician ? `<span>Technieker: ${escapeHtml(job.technician)}</span>` : "",
+      job.phone ? `<span>Tel: ${escapeHtml(job.phone)}</span>` : "",
+      job.category ? `<span>Type: ${escapeHtml(job.category)}</span>` : "",
+    ].filter(Boolean).join("<br>");
+
+    if (jobMarkers[job.id]) {
+      jobMarkers[job.id].setLatLng([pos.lat, pos.lon]);
+      jobMarkers[job.id].setPopupContent(popup);
+    } else {
+      jobMarkers[job.id] = L.marker([pos.lat, pos.lon], { icon: jobIcon(job.status), zIndexOffset: 50 })
+        .addTo(map)
+        .bindPopup(popup);
+    }
+  }
+}
+
 async function refreshTechnicianLocations() {
   if (!map) return;
   try {
@@ -211,14 +259,20 @@ function initMap() {
     scrollWheelZoom: false,
   }).setView(defaultMapView.center, defaultMapView.zoom);
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap",
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    subdomains: "abcd",
+    maxZoom: 20,
+    attribution: "&copy; OpenStreetMap &copy; CARTO",
   }).addTo(map);
+
+  setTimeout(() => {
+    if (map) map.invalidateSize();
+  }, 200);
 
   // Load technician locations immediately and refresh every 30s
   refreshTechnicianLocations();
   setInterval(refreshTechnicianLocations, 30000);
+  placeJobMarkers();
 }
 
 function setMapInteraction(enabled) {

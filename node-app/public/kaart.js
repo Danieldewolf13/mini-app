@@ -133,9 +133,11 @@
       }
 
       locs.forEach((loc) => {
-        if (!loc.lat || !loc.lon) return;
+        const lat = Number(loc.latitude ?? loc.lat);
+        const lon = Number(loc.longitude ?? loc.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
         const id = String(loc.tg_id);
-        const latLng = [parseFloat(loc.lat), parseFloat(loc.lon)];
+        const latLng = [lat, lon];
         const updatedAt = loc.updated_at ? new Date(loc.updated_at).toLocaleTimeString("nl-BE") : "?";
         const popupText = `<strong>${escHtml(loc.full_name || loc.tech_key || id)}</strong><br>Bijgewerkt: ${updatedAt}`;
 
@@ -168,9 +170,10 @@
       scrollWheelZoom: true,
     }).setView(defaultView.center, defaultView.zoom);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap",
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
     }).addTo(kaartMap);
 
     // Kaart moet opnieuw renderen na layout settle
