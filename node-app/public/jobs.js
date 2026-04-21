@@ -1,4 +1,5 @@
 let currentJobId = null;
+let currentJobData = null;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -98,52 +99,48 @@ function renderJobActions(data) {
 
   const assignSection = data.actions?.assign_label
     ? `
-      <form id="assignForm" class="detail-inline-form">
-        <label>
-          <span>${escapeHtml(data.actions.assign_label)}</span>
-          <select id="assignTechnicianSelect" name="technician_id">${assignmentOptions}</select>
-        </label>
-        <button type="submit" class="inline-button">Opslaan</button>
-      </form>
+      <label>
+        <span>${escapeHtml(data.actions.assign_label)}</span>
+        <select id="assignTechnicianSelect" name="technician_id">${assignmentOptions}</select>
+      </label>
     `
     : "";
 
   const appointmentSection = data.actions?.appointment
     ? `
-      <form id="appointmentForm" class="detail-inline-form">
-        <label>
-          <span>${escapeHtml(data.actions.appointment.label)}</span>
-          <input
-            id="appointmentDateInput"
-            name="scheduled_at"
-            type="datetime-local"
-            value="${escapeHtml(data.actions.appointment.scheduled_at_value || "")}"
-          />
-        </label>
-        <label>
-          <span>Type</span>
-          <select id="appointmentTypeSelect" name="afspraak_type">${appointmentTypeOptions}</select>
-        </label>
-        <label>
-          <span>Status</span>
-          <select id="appointmentStatusSelect" name="status">${appointmentStatusOptions}</select>
-        </label>
-        <button type="submit" class="inline-button">Opslaan</button>
-      </form>
+      <label>
+        <span>${escapeHtml(data.actions.appointment.label)}</span>
+        <input
+          id="appointmentDateInput"
+          name="scheduled_at"
+          type="datetime-local"
+          value="${escapeHtml(data.actions.appointment.scheduled_at_value || "")}"
+        />
+      </label>
+      <label>
+        <span>Type</span>
+        <select id="appointmentTypeSelect" name="afspraak_type">${appointmentTypeOptions}</select>
+      </label>
+      <label>
+        <span>Status</span>
+        <select id="appointmentStatusSelect" name="status">${appointmentStatusOptions}</select>
+      </label>
     `
     : "";
 
   return `
     <div id="jobActionFeedback" class="muted"></div>
-    <form id="statusForm" class="detail-inline-form">
+    <form id="jobActionForm" class="detail-inline-form detail-inline-form--stacked">
       <label>
         <span>${escapeHtml(data.actions?.status_label || "Status wijzigen")}</span>
         <select id="statusSelect" name="status">${statusOptions}</select>
       </label>
-      <button type="submit" class="inline-button">Opslaan</button>
+      ${assignSection}
+      ${appointmentSection}
+      <div class="detail-actions-footer">
+        <button type="submit" id="jobActionSubmit" class="inline-button">Opslaan</button>
+      </div>
     </form>
-    ${assignSection}
-    ${appointmentSection}
   `;
 }
 
@@ -172,100 +169,115 @@ function refreshAfterJobUpdate(updated) {
   window.setTimeout(() => window.location.reload(), 500);
   return Promise.resolve();
 }
-
 function bindJobActionForms() {
   const feedback = document.getElementById("jobActionFeedback");
-  const statusForm = document.getElementById("statusForm");
-  const assignForm = document.getElementById("assignForm");
-  const appointmentForm = document.getElementById("appointmentForm");
+  const jobActionForm = document.getElementById("jobActionForm");
 
-  if (statusForm) {
-    statusForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const statusSelect = document.getElementById("statusSelect");
-      if (!currentJobId || !statusSelect) {
-        return;
-      }
-
-      try {
-        if (feedback) {
-          feedback.textContent = "Status wordt opgeslagen...";
-        }
-        const updated = await applyJobAction(`/api/jobs/${currentJobId}/status`, {
-          status: statusSelect.value,
-        });
-        if (feedback) {
-          feedback.textContent = "Status bijgewerkt.";
-        }
-        renderJobDetail(updated);
-        refreshAfterJobUpdate(updated);
-      } catch (error) {
-        if (feedback) {
-          feedback.textContent = error.message || "Status kon niet worden opgeslagen.";
-        }
-      }
-    });
+  if (!jobActionForm) {
+    return;
   }
 
-  if (assignForm) {
-    assignForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const select = document.getElementById("assignTechnicianSelect");
-      if (!currentJobId || !select) {
-        return;
-      }
+  jobActionForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-      try {
-        if (feedback) {
-          feedback.textContent = "Toewijzing wordt opgeslagen...";
-        }
-        const updated = await applyJobAction(`/api/jobs/${currentJobId}/assign`, {
-          technician_id: select.value,
+    const statusSelect = document.getElementById("statusSelect");
+    const assignSelect = document.getElementById("assignTechnicianSelect");
+    const dateInput = document.getElementById("appointmentDateInput");
+    const appointmentTypeSelect = document.getElementById("appointmentTypeSelect");
+    const appointmentStatusSelect = document.getElementById("appointmentStatusSelect");
+    const submit = document.getElementById("jobActionSubmit");
+
+    if (!currentJobId || !statusSelect) {
+      return;
+    }
+
+    const updates = [];
+    const originalStatus = currentJobData?.actions?.status_value ?? null;
+    const nextStatus = statusSelect.value;
+    if (nextStatus !== originalStatus) {
+      updates.push({
+        label: "Status",
+        pending: "Status wordt opgeslagen...",
+        success: "Status bijgewerkt.",
+        run: () => applyJobAction(`/api/jobs/${currentJobId}/status`, { status: nextStatus }),
+      });
+    }
+
+    if (assignSelect) {
+      const originalTechnician = String(currentJobData?.actions?.technician_value ?? "");
+      const nextTechnician = String(assignSelect.value ?? "");
+      if (nextTechnician !== originalTechnician) {
+        updates.push({
+          label: "Technieker",
+          pending: "Toewijzing wordt opgeslagen...",
+          success: "Technieker bijgewerkt.",
+          run: () => applyJobAction(`/api/jobs/${currentJobId}/assign`, { technician_id: nextTechnician }),
         });
+      }
+    }
+
+    if (dateInput && appointmentTypeSelect && appointmentStatusSelect) {
+      const originalAppointment = currentJobData?.actions?.appointment || {};
+      const nextAppointment = {
+        scheduled_at: dateInput.value || "",
+        afspraak_type: appointmentTypeSelect.value,
+        status: appointmentStatusSelect.value,
+      };
+      const hadAppointment = Boolean(originalAppointment.scheduled_at_value);
+      const appointmentChanged =
+        nextAppointment.scheduled_at !== String(originalAppointment.scheduled_at_value || "") ||
+        nextAppointment.afspraak_type !== String(originalAppointment.type_value || "") ||
+        nextAppointment.status !== String(originalAppointment.status_value || "");
+      const shouldSaveAppointment = appointmentChanged && (Boolean(nextAppointment.scheduled_at) || hadAppointment);
+
+      if (shouldSaveAppointment) {
+        updates.push({
+          label: "Afspraak",
+          pending: "Afspraak wordt opgeslagen...",
+          success: "Afspraak bijgewerkt.",
+          run: () => applyJobAction(`/api/jobs/${currentJobId}/appointment`, nextAppointment),
+        });
+      }
+    }
+
+    if (!updates.length) {
+      if (feedback) {
+        feedback.textContent = "Geen wijzigingen om op te slaan.";
+      }
+      return;
+    }
+
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = "Bezig...";
+    }
+
+    try {
+      let updated = null;
+      for (const update of updates) {
         if (feedback) {
-          feedback.textContent = "Technieker bijgewerkt.";
+          feedback.textContent = update.pending;
         }
+        updated = await update.run();
+      }
+      if (feedback) {
+        feedback.textContent = updates.length === 1 ? updates[0].success : "Wijzigingen opgeslagen.";
+      }
+      if (updated) {
         renderJobDetail(updated);
         refreshAfterJobUpdate(updated);
-      } catch (error) {
-        if (feedback) {
-          feedback.textContent = error.message || "Technieker kon niet worden opgeslagen.";
-        }
       }
-    });
-  }
-
-  if (appointmentForm) {
-    appointmentForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const dateInput = document.getElementById("appointmentDateInput");
-      const typeSelect = document.getElementById("appointmentTypeSelect");
-      const statusSelect = document.getElementById("appointmentStatusSelect");
-      if (!currentJobId || !dateInput || !typeSelect || !statusSelect) {
-        return;
+    } catch (error) {
+      if (feedback) {
+        feedback.textContent = error.message || "Wijzigingen konden niet worden opgeslagen.";
       }
-
-      try {
-        if (feedback) {
-          feedback.textContent = "Afspraak wordt opgeslagen...";
-        }
-        const updated = await applyJobAction(`/api/jobs/${currentJobId}/appointment`, {
-          scheduled_at: dateInput.value,
-          afspraak_type: typeSelect.value,
-          status: statusSelect.value,
-        });
-        if (feedback) {
-          feedback.textContent = "Afspraak bijgewerkt.";
-        }
-        renderJobDetail(updated);
-        refreshAfterJobUpdate(updated);
-      } catch (error) {
-        if (feedback) {
-          feedback.textContent = error.message || "Afspraak kon niet worden opgeslagen.";
-        }
+    } finally {
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = "Opslaan";
       }
-    });
-  }
+    }
+  });
 }
 
 function renderJobDetail(data) {
@@ -275,6 +287,7 @@ function renderJobDetail(data) {
   }
 
   currentJobId = data.id;
+  currentJobData = data;
   panel.classList.remove("hidden");
   document.getElementById("jobDetailTitle").textContent = `#${data.id} - ${data.client}`;
   document.getElementById("jobOverview").innerHTML = renderJobOverview(data);
@@ -304,7 +317,7 @@ async function loadJobDetail(id) {
 
 window.loadJobDetail = loadJobDetail;
 
-// ── Nieuwe job modaal ──────────────────────────────────────────────────────
+// -- Nieuwe job modaal ------------------------------------------------------
 (function () {
   function openModal() {
     const modal = document.getElementById("newJobModal");
@@ -372,3 +385,4 @@ window.loadJobDetail = loadJobDetail;
     if (e.key === "Escape") closeModal();
   });
 })();
+
