@@ -4,6 +4,11 @@ import os
 from dataclasses import dataclass
 
 
+def _env(name: str) -> str | None:
+    value = os.getenv(name)
+    return value.strip() if value is not None else None
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "mini app"
@@ -13,10 +18,10 @@ class Settings:
     db_name: str | None = os.getenv("MINI_APP_DB_NAME")
 
     billit_base_url: str = os.getenv("BILLIT_BASE_URL", "https://app.billit.eu")
-    billit_api_url: str = os.getenv("BILLIT_API_URL", "https://api.sandbox.billit.be")
-    billit_api_key: str | None = os.getenv("BILLIT_API_KEY")
-    billit_party_id: str | None = os.getenv("BILLIT_PARTY_ID")
-    billit_webhook_token: str | None = os.getenv("BILLIT_WEBHOOK_TOKEN")
+    billit_api_url: str = os.getenv("BILLIT_API_URL", "https://api.sandbox.billit.be").strip()
+    billit_api_key: str | None = _env("BILLIT_API_KEY")
+    billit_party_id: str | None = _env("BILLIT_PARTY_ID")
+    billit_webhook_token: str | None = _env("BILLIT_WEBHOOK_TOKEN")
 
 
 settings = Settings()
