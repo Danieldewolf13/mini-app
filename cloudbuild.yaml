@@ -26,6 +26,6 @@ steps:
       - --allow-unauthenticated
 
 substitutions:
-  _SERVICE_NAME: mini-app
+  _SERVICE_NAME: daniel-mini-app
   _REGION: europe-west1
   _IMAGE: europe-west1-docker.pkg.dev/$PROJECT_ID/mini-app/mini-app:latest
