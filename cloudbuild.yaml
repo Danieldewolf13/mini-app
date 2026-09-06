@@ -28,4 +28,4 @@ steps:
 substitutions:
   _SERVICE_NAME: daniel-mini-app
   _REGION: europe-west1
-  _IMAGE: europe-west1-docker.pkg.dev/$PROJECT_ID/mini-app/mini-app:latest
+  _IMAGE: europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/daniel-mini-app:latest
